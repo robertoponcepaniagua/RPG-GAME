@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:15
+    container_name: rpg_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: rpg_game
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d rpg_game"]
+      interval: 3s
+      retries: 5
+  app:
+      build: .
+      container_name: rpg_app
+      ports:
+        - "5000:5000"
+      environment:
+        - DATABASE_URL=postgresql://user_rpg:password_rpg@db:5432/rpg_db
+        - FLASK_ENV=development  # Indica a Flask que estamos desarrollando
+      volumes:
+        - .:/app                 # <--- ESTA ES LA MAGIA: Sincroniza tu carpeta actual con el contenedor
+      depends_on:
+        db:
+          condition: service_healthy

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RPG Avanzado</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { background: #121212; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 50px; }
+        .skill-tree { border: 1px solid #333; padding: 20px; background: #1e1e1e; border-radius: 8px; }
+        .skill { margin: 10px; padding: 10px; border: 1px solid #444; display: inline-block; }
+        .locked { opacity: 0.5; background: #000; }
+        button { background: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Árbol de Habilidades Jerárquico</h1>
+    <div class="skill-tree">
+        <div class="skill">
+            <strong>Corte</strong><br>Nivel: 3/5
+            <button onclick="socket.emit('mejorar_habilidad', {id: 1})">Subir Nivel</button>
+        </div>
+        <span>➔</span>
+        <div class="skill">
+            <strong>Torbellino</strong><br>Nivel: 0/5 (Requiere Corte Nvl 3)
+            <button onclick="socket.emit('mejorar_habilidad', {id: 2})">Desbloquear</button>
+        </div>
+    </div>
+    <div id="log" style="margin-top: 20px; color: #888;"></div>
+    <script>
+        const socket = io();
+        socket.on('status', (data) => {
+            document.getElementById('log').innerText = "> " + data.msg;
+        });
+    </script>
+</body>
+</html>

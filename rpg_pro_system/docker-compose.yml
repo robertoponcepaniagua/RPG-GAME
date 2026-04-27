@@ -1,29 +1,36 @@
+version: "3.9"
+
 services:
+
   db:
-    image: postgres:15
-    container_name: rpg_db
+    image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: rpg_game
+      POSTGRES_DB: rpg_db
+      POSTGRES_USER: rpguser
+      POSTGRES_PASSWORD: rpgpassword
     ports:
       - "5432:5432"
     volumes:
+      - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d rpg_game"]
-      interval: 3s
-      retries: 5
+      # CORRECCIÓN: Añadimos -d rpg_db para que sepa dónde mirar
+      test: ["CMD-SHELL", "pg_isready -U rpguser -d rpg_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app:
-      build: .
-      container_name: rpg_app
-      ports:
-        - "5000:5000"
-      environment:
-        - DATABASE_URL=postgresql://user_rpg:password_rpg@db:5432/rpg_db
-        - FLASK_ENV=development  # Indica a Flask que estamos desarrollando
-      volumes:
-        - .:/app                 # <--- ESTA ES LA MAGIA: Sincroniza tu carpeta actual con el contenedor
-      depends_on:
-        db:
-          condition: service_healthy
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://rpguser:rpgpassword@db:5432/rpg_db
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

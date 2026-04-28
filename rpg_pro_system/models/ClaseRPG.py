@@ -1,15 +1,24 @@
 class ClaseRPG:
-    def __init__(self, nombre, vida, mana, fuerza, agilidad, inteligencia):
+    def __init__(self, nombre, descripcion, factor_dano=1.0, dado_vida=8, recurso_primario='Mana'):
         self.nombre = nombre
-        self._vida = vida
-        self._mana = mana
-        self._fuerza = fuerza
-        self._agilidad = agilidad
-        self._inteligencia = inteligencia
-        self.nivel = 1
-        self.factor_dano = 1.0
-        self.dado_vida = 8
-        self.recurso_primario = "Mana"
+        self.descripcion = descripcion
+        self.factor_dano = float(factor_dano)
+        self.dado_vida = dado_vida
+        self.recurso_primario = recurso_primario
 
+        # --- Atributos de Estado ---
+        self.vida_max = 0
+        self.vida_actual = 0
+        self.mana_max = 0
+        self.mana_actual = 0
+        self.fuerza = 10
+        self.agilidad = 10
+        self.inteligencia = 10
+        self.nivel = 1 #
 
-    # METODO ATACAR:
+    def calcular_ataque_basico(self):
+        # Daño basado en fuerza multiplicado por el factor de la clase
+        return self.fuerza * self.factor_dano
+
+    def __str__(self):
+        return f"{self.nombre} (Nivel {self.nivel})"

@@ -2,8 +2,13 @@ import psycopg2
 import os
 
 def get_connection():
-    database_url = os.environ.get("DATABASE_URL")
-    return psycopg2.connect(database_url)
+    return psycopg2.connect(
+        host=os.environ.get("DB_HOST", "db"),
+        port=os.environ.get("DB_PORT", 5432),
+        dbname=os.environ.get("DB_NAME", "rpg_db"),
+        user=os.environ.get("DB_USER", "rpguser"),
+        password=os.environ.get("DB_PASSWORD", "rpgpassword")
+    )
 
 # PROBAR CONEXIÓN: docker compose exec app python database/db.py
 if __name__ == "__main__":

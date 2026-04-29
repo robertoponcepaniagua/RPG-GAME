@@ -28,6 +28,8 @@ services:
       - "5000:5000"
     environment:
       DATABASE_URL: postgresql://rpguser:rpgpassword@db:5432/rpg_db
+      FLASK_ENV: development
+      FLASK_DEBUG: 1
     volumes:
       - .:/app # Sincroniza el código local con el contenedor: permite que los cambios se apliquen al instante sin reiniciar Docker.
     depends_on:

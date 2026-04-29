@@ -1,25 +1,72 @@
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 from flask_socketio import SocketIO, emit
 import psycopg2
+from contextlib import contextmanager
+# Importamos tus clases de lógica (asegúrate que la carpeta models y el archivo logic.py existan)
 from models.logic import Guerrero, Mago, Personaje
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-def get_db():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
+# --- DEFINICIÓN DE LA URL ----
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://rpguser:rpgpassword@db:5432/rpg_db")
 
+# --- CANAL DE COMUNICACIÓN CON LA BASE DE DATOS ---
+@contextmanager
+def get_db_connection():
+    """
+    Gestor de contexto para la base de datos.
+    Asegura que cada conexión se abra y se cierre correctamente,
+    incluso si ocurre un error durante la ejecución.
+    """
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        print("🔗 Conexión abierta")
+        yield conn
+    except Exception as e:
+        print(f"❌ Error al conectar: {e}")
+        raise e
+    finally:
+        if conn is not None:
+            conn.close()
+            print("🔌 Conexión cerrada automáticamente")
+
+# ------- RUTAS -------
+# -- RUTA HTML ----
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# --- RUTA CSS ---
+@app.route('/style.css')
+def styles():
+    return send_from_directory('templates', 'style.css')
+
+
+# --- TEST DE CONEXIÓN ---
+@socketio.on('connect')
+def test_db_connection():
+    """
+    Se ejecuta automáticamente cuando un usuario abre la web.
+    Realiza un 'ping' a la base de datos para confirmar que el sistema está listo.
+    """
+    try:
+        # Usamos el context manager
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1;") # Consulta de prueba rápida
+                emit('status', {'msg': '✅ Conectado con éxito a la Base de Datos (PostgreSQL)'})
+    except Exception as e:
+        emit('status', {'msg': f'❌ Error: Base de Datos inaccesible: {str(e)}'})
+
 @socketio.on('mejorar_habilidad')
 def upgrade_skill(data):
-    # Aquí iría la lógica de verificar en la DB si cumple requisitos
-    # 1. ¿Nivel de habilidad requisito >= nivel_requisito_necesario?
-    # 2. ¿Puntos disponibles?
-    emit('status', {'msg': 'Habilidad mejorada (Lógica de árbol validada)'})
+    skill_id = data.get('id')
+    emit('status', {'msg': f'Procesando mejora de habilidad ID: {skill_id}'})
 
 if __name__ == '__main__':
+    # Arranca el servidor de WebSockets
+    # host='0.0.0.0' es necesario para que sea accesible desde fuera del contenedor Docker
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)

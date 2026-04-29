@@ -1,11 +1,10 @@
 import os
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, render_template, send_from_directory, jsonify
 from flask_socketio import SocketIO, emit
 import psycopg2
 from contextlib import contextmanager
-# Importamos tus clases de lógica (asegúrate que la carpeta models y el archivo logic.py existan)
-from models.logic import Guerrero, Mago, Personaje
-
+# En app.py
+from models.Personaje import Personaje
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -43,7 +42,16 @@ def index():
 @app.route('/style.css')
 def styles():
     return send_from_directory('templates', 'style.css')
-
+# --- RUTA DE DATOS (API JSON) ---
+@app.route('/api/personajes')
+def api_personajes():
+    """
+    Esta ruta no devuelve una página web (HTML), devuelve DATOS puros.
+    Es útil para que JavaScript o herramientas externas lean tu base de datos.
+    """
+    #
+    datos = Personaje.obtener_personajes(get_db_connection)
+    return jsonify(datos)
 
 # --- TEST DE CONEXIÓN ---
 @socketio.on('connect')
@@ -61,10 +69,18 @@ def test_db_connection():
     except Exception as e:
         emit('status', {'msg': f'❌ Error: Base de Datos inaccesible: {str(e)}'})
 
+
+# --- SOCKETS ---
 @socketio.on('mejorar_habilidad')
 def upgrade_skill(data):
     skill_id = data.get('id')
     emit('status', {'msg': f'Procesando mejora de habilidad ID: {skill_id}'})
+
+@socketio.on('obtener_personajes')
+def mostrar_personajes():
+    # USAMOS LA CLASE.METODO y le pasamos nuestra conexión local
+    datos = Personaje.obtener_personajes(get_db_connection)
+    emit("personajes", datos)
 
 if __name__ == '__main__':
     # Arranca el servidor de WebSockets

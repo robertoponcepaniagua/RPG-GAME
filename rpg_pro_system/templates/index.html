@@ -29,6 +29,11 @@
         </div>
     </div>
 
+
+    <h2>👥 Aventureros en el Reino</h2>
+    <div id="contenedor-personajes" class="personajes-grid">
+        </div>
+
     <div id="log">> Sistema iniciado.</div>
 
     <script>
@@ -54,6 +59,30 @@
         socket.on('status', (data) => {
             logBox.innerText = "> " + data.msg;
         });
+
+        // 1. Pedir los personajes en cuanto conectamos
+    socket.on('connect', () => {
+        socket.emit('obtener_personajes'); // Avisamos al Python que queremos la lista
+    });
+
+    // 2. Escuchar la respuesta del servidor
+    socket.on('personajes', (lista) => {
+        const contenedor = document.getElementById('contenedor-personajes');
+        contenedor.innerHTML = ""; // Limpiar antes de llenar
+
+    lista.forEach(p => {
+        // Creamos el HTML dinámicamente para cada personaje
+        contenedor.innerHTML += `
+            <div class="card-personaje">
+                <h3>${p.nombre}</h3>
+                <p class="info-p">⭐ Nivel: ${p.nivel}</p>
+                <p class="info-p">💰 Oro: ${p.oro}</p>
+                <p class="info-p">❤️ Vida: ${p.vida_actual}</p>
+            </div>
+        `;
+    });
+});
+
     </script>
 </body>
 </html>

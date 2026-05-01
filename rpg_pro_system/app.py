@@ -5,6 +5,7 @@ import psycopg2
 from contextlib import contextmanager
 # En app.py
 from models.Personaje import Personaje
+from models.Enemigo import Enemigo
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -51,6 +52,11 @@ def api_personajes():
     """
     #
     datos = Personaje.obtener_personajes(get_db_connection)
+    return jsonify(datos)
+
+@app.route('/api/enemigos')
+def api_enemigos():
+    datos = Enemigo.obtener_enemigos(get_db_connection)
     return jsonify(datos)
 
 # --- TEST DE CONEXIÓN ---

@@ -1,11 +1,17 @@
 import os
-from flask import Flask, render_template, send_from_directory, jsonify
+from flask import Flask, render_template, send_from_directory, jsonify, request
 from flask_socketio import SocketIO, emit
 import psycopg2
 from contextlib import contextmanager
+
 # En app.py
 from models.Personaje import Personaje
 from models.Enemigo import Enemigo
+from models.Guerrero import Guerrero
+from models.Mago import Mago
+from models.Inventario import Inventario
+from models.Item import Item
+
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -57,6 +63,55 @@ def api_personajes():
 @app.route('/api/enemigos')
 def api_enemigos():
     datos = Enemigo.obtener_enemigos(get_db_connection)
+    return jsonify(datos)
+
+
+@app.route('/api/guerreros')
+def api_guerreros():
+    datos = Guerrero.obtener_guerreros(get_db_connection)
+    return jsonify(datos)
+
+@app.route('/api/magos')
+def api_magos():
+    datos = Mago.obtener_magos(get_db_connection)
+    return jsonify(datos)
+
+
+@app.route('/api/inventario/')
+def api_inventario():
+    personaje_id = request.args.get('id')
+
+    # IMPORTANTE: Convertir a int si existe, si no, None
+    if personaje_id:
+        personaje_id = int(personaje_id)
+
+    datos = Inventario.obtener_inventario(get_db_connection, personaje_id)
+    return jsonify(datos)
+
+
+@app.route('/api/items/')
+def api_items():
+    """
+    Endpoint para obtener el catálogo de items.
+    Uso:
+    - /api/items/ (Trae todo)
+    - /api/items/?tipo=1 (Trae solo items de ese tipo)
+    - /api/items/?rareza=Épico (Trae solo items épicos)
+    """
+    # Obtenemos los parámetros de la URL si existen
+    tipo_id = request.args.get('tipo')
+    rareza = request.args.get('rareza')
+
+    # Convertimos tipo_id a entero si existe, ya que en tu SQL es un INT (FK)
+    if tipo_id:
+        try:
+            tipo_id = int(tipo_id)
+        except ValueError:
+            tipo_id = None
+
+    # Llamamos al método estático de la clase Item
+    datos = Item.obtener_items(get_db_connection, tipo=tipo_id, rareza=rareza)
+
     return jsonify(datos)
 
 # --- TEST DE CONEXIÓN ---

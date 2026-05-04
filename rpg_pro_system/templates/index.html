@@ -1,88 +1,773 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>RPG Avanzado</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG Avanzado | Reino de Leyendas</title>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-<link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
 <body>
+    <div class="background-glow"></div>
 
-    <div id="status-container">
-        <span id="status-dot" class="dot disconnected"></span>
-        <span id="status-text">Desconectado</span>
-    </div>
-
-    <h1>Árbol de Habilidades Jerárquico</h1>
-
-    <div class="skill-tree">
-        <div class="skill">
-            <strong>Corte</strong><br>
-            Nivel: 3/5
-            <button onclick="socket.emit('mejorar_habilidad', {id: 1})">Subir Nivel</button>
+    <header class="game-header">
+        <div class="brand">
+            <span class="brand-icon">⚔</span>
+            <div>
+                <p class="eyebrow">RPG Pro System</p>
+                <h1>Reino de Leyendas</h1>
+            </div>
         </div>
 
-        <span>➔</span>
+        <div class="header-right">
+            <div id="hero-hud" class="hero-hud hidden">
+                <div class="hud-avatar" id="hud-avatar">?</div>
+                <div class="hud-info">
+                    <strong id="hud-name">Sin héroe</strong>
+                    <div class="hud-stats">
+                        <span>Lv <b id="hud-level">-</b></span>
+                        <span>💰 <b id="hud-gold">-</b></span>
+                        <span>❤ <b id="hud-hp">-</b></span>
+                    </div>
+                </div>
+            </div>
 
-        <div class="skill">
-            <strong>Torbellino</strong><br>
-            Nivel: 0/5 (Requiere Corte Nvl 3)
-            <button onclick="socket.emit('mejorar_habilidad', {id: 2})">Desbloquear</button>
+            <div id="status-container">
+                <span id="status-dot" class="dot disconnected"></span>
+                <span id="status-text">Desconectado</span>
+            </div>
         </div>
-    </div>
+    </header>
 
+    <main class="game-layout">
+        <!-- HERO -->
+        <section class="hero-panel">
+            <div class="hero-content">
+                <p class="eyebrow">Servidor activo</p>
+                <h2>Forja tu destino, mejora tus habilidades y domina el reino</h2>
+                <p class="hero-description">
+                    Elige a tu aventurero, desbloquea poderes únicos, equipa los mejores objetos
+                    de la tienda y enfréntate a enemigos legendarios en combate por turnos.
+                </p>
 
-    <h2>👥 Aventureros en el Reino</h2>
-    <div id="contenedor-personajes" class="personajes-grid">
-        </div>
+                <div class="hero-actions">
+                    <button id="btn-recargar">⟳ Actualizar aventureros</button>
+                    <button id="btn-ir-combate" class="btn-secondary">⚔ Ir al combate</button>
+                </div>
+            </div>
 
-    <div id="log">> Sistema iniciado.</div>
+            <div class="hero-card">
+                <div class="rune-circle">
+                    <span>✦</span>
+                </div>
+                <h3>Estado del Reino</h3>
+                <p>Conexión en tiempo real con la base de datos y eventos del juego.</p>
+                <div id="kingdom-stats" class="kingdom-stats">
+                    <div><span>Héroes</span><strong id="kpi-heroes">0</strong></div>
+                    <div><span>Enemigos</span><strong id="kpi-enemigos">0</strong></div>
+                    <div><span>Objetos</span><strong id="kpi-items">0</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SELECTOR DE PERSONAJE -->
+        <section class="dashboard-grid">
+            <article class="panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">Compañía</p>
+                        <h2>Aventureros del Reino</h2>
+                    </div>
+                    <span id="contador-personajes" class="panel-badge">0 héroes</span>
+                </div>
+
+                <div class="character-selector">
+                    <label for="menu-personajes">Elegir personaje</label>
+                    <select id="menu-personajes">
+                        <option value="">Selecciona un aventurero...</option>
+                    </select>
+                </div>
+
+                <div id="personaje-seleccionado" class="selected-character hidden">
+                    <div class="selected-avatar">?</div>
+                    <div class="selected-info">
+                        <p class="eyebrow">Personaje seleccionado</p>
+                        <h3 id="selected-name">Sin seleccionar</h3>
+                        <div class="selected-stats">
+                            <span id="selected-level">Nivel: -</span>
+                            <span id="selected-gold">Oro: -</span>
+                            <span id="selected-health">Vida: -</span>
+                            <span id="selected-class">Clase: -</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="contenedor-personajes" class="personajes-grid">
+                    <div class="empty-state">
+                        <span>⌛</span>
+                        <p>Cargando aventureros...</p>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <!-- TABS PRINCIPALES -->
+        <section class="tabs-panel">
+            <nav class="tabs-nav">
+                <button class="tab-btn active" data-tab="habilidades">🌳 Habilidades</button>
+                <button class="tab-btn" data-tab="tienda">🛒 Tienda</button>
+                <button class="tab-btn" data-tab="combate">⚔ Combate</button>
+                <button class="tab-btn" data-tab="inventario">🎒 Inventario</button>
+            </nav>
+
+            <!-- TAB: ÁRBOL DE HABILIDADES -->
+            <article class="tab-content active" id="tab-habilidades">
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">Progresión</p>
+                        <h2>Árbol de Habilidades</h2>
+                    </div>
+                    <span id="badge-clase" class="panel-badge">Sin clase</span>
+                </div>
+
+                <div id="skill-tree" class="skill-tree">
+                    <div class="empty-state">
+                        <span>🪄</span>
+                        <p>Selecciona un personaje para ver su árbol de habilidades.</p>
+                    </div>
+                </div>
+            </article>
+
+            <!-- TAB: TIENDA -->
+            <article class="tab-content" id="tab-tienda">
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">Mercado</p>
+                        <h2>Tienda del Reino</h2>
+                    </div>
+                    <span class="panel-badge" id="badge-oro">💰 0 oro</span>
+                </div>
+
+                <div class="shop-filters">
+                    <button class="chip active" data-rareza="">Todo</button>
+                    <button class="chip" data-rareza="Común">Común</button>
+                    <button class="chip" data-rareza="Raro">Raro</button>
+                    <button class="chip" data-rareza="Épico">Épico</button>
+                    <button class="chip" data-rareza="Legendario">Legendario</button>
+                </div>
+
+                <div id="shop-grid" class="shop-grid">
+                    <div class="empty-state">
+                        <span>⌛</span>
+                        <p>Cargando objetos...</p>
+                    </div>
+                </div>
+            </article>
+
+            <!-- TAB: COMBATE -->
+            <article class="tab-content" id="tab-combate">
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">Arena</p>
+                        <h2>Combate por turnos</h2>
+                    </div>
+                    <span id="badge-turno" class="panel-badge">Turno 0</span>
+                </div>
+
+                <div class="combat-setup">
+                    <label for="menu-enemigos">Elige a tu rival:</label>
+                    <select id="menu-enemigos">
+                        <option value="">Cargando enemigos...</option>
+                    </select>
+                    <button id="btn-iniciar-combate">⚔ Iniciar combate</button>
+                </div>
+
+                <div id="combat-arena" class="combat-arena hidden">
+                    <div class="fighter fighter-hero">
+                        <div class="fighter-avatar" id="hero-avatar">?</div>
+                        <h3 id="hero-name">Héroe</h3>
+                        <div class="hp-bar"><div id="hero-hp-fill"></div></div>
+                        <p class="hp-text"><span id="hero-hp-text">0/0</span></p>
+                    </div>
+
+                    <div class="vs-mark">VS</div>
+
+                    <div class="fighter fighter-enemy">
+                        <div class="fighter-avatar" id="enemy-avatar">?</div>
+                        <h3 id="enemy-name">Enemigo</h3>
+                        <div class="hp-bar enemy"><div id="enemy-hp-fill"></div></div>
+                        <p class="hp-text"><span id="enemy-hp-text">0/0</span></p>
+                    </div>
+                </div>
+
+                <div id="combat-actions" class="combat-actions hidden">
+                    <button data-accion="atacar">🗡️ Atacar</button>
+                    <button data-accion="especial" class="btn-special">✨ Habilidad especial</button>
+                    <button data-accion="defender" class="btn-secondary">🛡️ Defender</button>
+                    <button data-accion="huir" class="btn-danger">🏃 Huir</button>
+                </div>
+
+                <div id="combat-log" class="combat-log">
+                    <p>&gt; Esperando inicio del combate...</p>
+                </div>
+            </article>
+
+            <!-- TAB: INVENTARIO -->
+            <article class="tab-content" id="tab-inventario">
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">Equipo</p>
+                        <h2>Inventario del héroe</h2>
+                    </div>
+                    <span id="badge-items" class="panel-badge">0 objetos</span>
+                </div>
+
+                <div id="inventory-grid" class="inventory-grid">
+                    <div class="empty-state">
+                        <span>🎒</span>
+                        <p>Selecciona un personaje para ver su inventario.</p>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <!-- LOG DEL SISTEMA -->
+        <section class="bottom-grid">
+            <article class="panel small-panel">
+                <p class="eyebrow">Log</p>
+                <h2>Registro del Sistema</h2>
+                <div id="log">&gt; Sistema iniciado.</div>
+            </article>
+        </section>
+    </main>
 
     <script>
-        // Inicializar socket una sola vez
         const socket = io();
+
+        /* ================== ELEMENTOS ================== */
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
         const logBox = document.getElementById('log');
 
-        // Gestión visual de la conexión
+        const contenedor = document.getElementById('contenedor-personajes');
+        const contadorPersonajes = document.getElementById('contador-personajes');
+        const btnRecargar = document.getElementById('btn-recargar');
+
+        const menuPersonajes = document.getElementById('menu-personajes');
+        const personajeSeleccionado = document.getElementById('personaje-seleccionado');
+        const selectedName = document.getElementById('selected-name');
+        const selectedLevel = document.getElementById('selected-level');
+        const selectedGold = document.getElementById('selected-gold');
+        const selectedHealth = document.getElementById('selected-health');
+        const selectedClass = document.getElementById('selected-class');
+        const selectedAvatar = document.querySelector('.selected-avatar');
+
+        const heroHud = document.getElementById('hero-hud');
+        const hudAvatar = document.getElementById('hud-avatar');
+        const hudName = document.getElementById('hud-name');
+        const hudLevel = document.getElementById('hud-level');
+        const hudGold = document.getElementById('hud-gold');
+        const hudHp = document.getElementById('hud-hp');
+
+        const skillTree = document.getElementById('skill-tree');
+        const badgeClase = document.getElementById('badge-clase');
+
+        const shopGrid = document.getElementById('shop-grid');
+        const badgeOro = document.getElementById('badge-oro');
+
+        const menuEnemigos = document.getElementById('menu-enemigos');
+        const btnIniciarCombate = document.getElementById('btn-iniciar-combate');
+        const combatArena = document.getElementById('combat-arena');
+        const combatActions = document.getElementById('combat-actions');
+        const combatLog = document.getElementById('combat-log');
+        const badgeTurno = document.getElementById('badge-turno');
+
+        const inventoryGrid = document.getElementById('inventory-grid');
+        const badgeItems = document.getElementById('badge-items');
+
+        /* ================== ESTADO ================== */
+        let personajesActuales = [];
+        let enemigosActuales = [];
+        let itemsActuales = [];
+        let personajeActivo = null;
+        let combateState = null;
+
+        const NOMBRES_CLASES = {
+            1: 'Guerrero', 2: 'Mago', 3: 'Pícaro', 4: 'Paladín',
+            5: 'Druida', 6: 'Bárbaro', 7: 'Clérigo', 8: 'Ranger',
+            9: 'Bardo', 10: 'Brujo', 11: 'Hechicero', 12: 'Monje'
+        };
+
+        /* ================== UTIL ================== */
+        function escribirLog(mensaje) {
+            logBox.innerText = "> " + mensaje;
+        }
+
+        function pedirPersonajes() {
+            escribirLog("Solicitando aventureros al servidor...");
+            socket.emit('obtener_personajes');
+        }
+
+        function getVidaMax(p) {
+            return Number(p.vida_max || p.vida_maxima || p.vida_actual || 100);
+        }
+
+        /* ================== TABS ================== */
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        document.getElementById('btn-ir-combate').addEventListener('click', () => {
+            document.querySelector('[data-tab="combate"]').click();
+            document.querySelector('.tabs-panel').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        /* ================== PERSONAJES ================== */
+        function llenarMenuPersonajes(lista) {
+            menuPersonajes.innerHTML = '<option value="">Selecciona un aventurero...</option>';
+            lista.forEach((p) => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = `${p.nombre || "Aventurero"} — Nivel ${p.nivel ?? 1}`;
+                menuPersonajes.appendChild(option);
+            });
+        }
+
+        function seleccionarPersonaje(idPersonaje) {
+            const personaje = personajesActuales.find(p => String(p.id) === String(idPersonaje));
+
+            document.querySelectorAll('.card-personaje').forEach(card => card.classList.remove('selected'));
+
+            if (!personaje) {
+                personajeSeleccionado.classList.add('hidden');
+                heroHud.classList.add('hidden');
+                personajeActivo = null;
+                escribirLog("Ningún personaje seleccionado.");
+                return;
+            }
+
+            personajeActivo = personaje;
+            const card = document.querySelector(`[data-personaje-id="${personaje.id}"]`);
+            if (card) card.classList.add('selected');
+
+            const vida = personaje.vida_actual ?? 0;
+            const vidaMax = getVidaMax(personaje);
+            const inicial = (personaje.nombre || "?").charAt(0).toUpperCase();
+            const claseNombre = NOMBRES_CLASES[personaje.id_clase] || 'Aventurero';
+
+            selectedAvatar.innerText = inicial;
+            selectedName.innerText = personaje.nombre || "Aventurero";
+            selectedLevel.innerText = `Nivel: ${personaje.nivel ?? 1}`;
+            selectedGold.innerText = `Oro: ${personaje.oro ?? 0}`;
+            selectedHealth.innerText = `Vida: ${vida}/${vidaMax}`;
+            selectedClass.innerText = `Clase: ${claseNombre}`;
+            personajeSeleccionado.classList.remove('hidden');
+
+            // HUD del header
+            hudAvatar.innerText = inicial;
+            hudName.innerText = personaje.nombre || "Aventurero";
+            hudLevel.innerText = personaje.nivel ?? 1;
+            hudGold.innerText = personaje.oro ?? 0;
+            hudHp.innerText = `${vida}/${vidaMax}`;
+            heroHud.classList.remove('hidden');
+
+            // Cargar datos dependientes
+            cargarHabilidades(personaje.id_clase, claseNombre);
+            cargarInventario(personaje.id);
+            badgeOro.innerText = `💰 ${personaje.oro ?? 0} oro`;
+
+            escribirLog(`Personaje seleccionado: ${personaje.nombre}.`);
+        }
+
+        menuPersonajes.addEventListener('change', () => seleccionarPersonaje(menuPersonajes.value));
+
+        /* ================== HABILIDADES ================== */
+        async function cargarHabilidades(claseId, claseNombre) {
+            badgeClase.innerText = claseNombre || 'Sin clase';
+            skillTree.innerHTML = `<div class="empty-state"><span>⌛</span><p>Cargando habilidades...</p></div>`;
+
+            if (!claseId) {
+                skillTree.innerHTML = `<div class="empty-state"><span>🪄</span><p>Este personaje no tiene clase asignada.</p></div>`;
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/habilidades?clase=${claseId}`);
+                const habilidades = await res.json();
+
+                if (!Array.isArray(habilidades) || habilidades.length === 0) {
+                    skillTree.innerHTML = `<div class="empty-state"><span>📭</span><p>Sin habilidades para esta clase.</p></div>`;
+                    return;
+                }
+
+                renderArbolHabilidades(habilidades);
+            } catch (err) {
+                skillTree.innerHTML = `<div class="empty-state"><span>⚠️</span><p>Error cargando habilidades.</p></div>`;
+            }
+        }
+
+        function renderArbolHabilidades(habilidades) {
+            // Agrupamos por tipo: pasiva → activa → ultimate
+            const orden = { 'pasiva': 0, 'activa': 1, 'ultimate': 2 };
+            habilidades.sort((a, b) => (orden[a.tipo] ?? 1) - (orden[b.tipo] ?? 1));
+
+            skillTree.innerHTML = habilidades.map((h, idx) => {
+                const tipo = h.tipo || 'activa';
+                const icono = tipo === 'ultimate' ? '🔥' : tipo === 'pasiva' ? '🛡️' : '✨';
+                const stats = h.stats || {};
+                const arrow = idx < habilidades.length - 1 ? `<span class="skill-arrow">➜</span>` : '';
+                return `
+                    <div class="skill ${tipo}" data-skill-id="${h.id}">
+                        <span class="skill-icon">${icono}</span>
+                        <strong>${h.nombre}</strong>
+                        <p class="skill-desc">${h.descripcion || ''}</p>
+                        <div class="skill-stats">
+                            <span>Lv máx <b>${stats.nivel_max ?? '-'}</b></span>
+                            <span>💧 <b>${stats.mana ?? 0}</b></span>
+                            <span>⚔ <b>${stats.dano ?? 0}</b></span>
+                        </div>
+                        <button onclick="socket.emit('mejorar_habilidad', {id: ${h.id}})">Mejorar</button>
+                    </div>
+                    ${arrow}
+                `;
+            }).join('');
+        }
+
+        /* ================== TIENDA ================== */
+        async function cargarTienda(rareza = '') {
+            shopGrid.innerHTML = `<div class="empty-state"><span>⌛</span><p>Cargando objetos...</p></div>`;
+            try {
+                const url = rareza ? `/api/items/?rareza=${encodeURIComponent(rareza)}` : '/api/items/';
+                const res = await fetch(url);
+                itemsActuales = await res.json();
+
+                document.getElementById('kpi-items').innerText = itemsActuales.length;
+
+                if (!itemsActuales.length) {
+                    shopGrid.innerHTML = `<div class="empty-state"><span>📦</span><p>Sin objetos disponibles.</p></div>`;
+                    return;
+                }
+
+                shopGrid.innerHTML = itemsActuales.map(it => {
+                    const rar = (it.rareza || 'Común').toLowerCase();
+                    const stats = it.stats || {};
+                    const statsHtml = Object.entries(stats)
+                        .filter(([_, v]) => v && Number(v) !== 0)
+                        .map(([k, v]) => `<span>${k}: <b>+${v}</b></span>`)
+                        .join('');
+                    return `
+                        <div class="shop-item rar-${rar}" data-item-id="${it.id}">
+                            <div class="shop-item-top">
+                                <span class="shop-icon">📦</span>
+                                <span class="shop-rar">${it.rareza || 'Común'}</span>
+                            </div>
+                            <h4>${it.nombre}</h4>
+                            <p>${it.descripcion || ''}</p>
+                            <div class="shop-stats">${statsHtml || '<span>Sin bonus</span>'}</div>
+                            <div class="shop-bottom">
+                                <span class="shop-price">💰 ${it.precio}</span>
+                                <button onclick="comprarItem(${it.id})">Comprar</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                shopGrid.innerHTML = `<div class="empty-state"><span>⚠️</span><p>Error cargando la tienda.</p></div>`;
+            }
+        }
+
+        function comprarItem(itemId) {
+            if (!personajeActivo) {
+                escribirLog("Selecciona un héroe antes de comprar.");
+                return;
+            }
+            const item = itemsActuales.find(i => i.id === itemId);
+            if (!item) return;
+            if ((personajeActivo.oro ?? 0) < item.precio) {
+                escribirLog(`No tienes oro suficiente para ${item.nombre}.`);
+                return;
+            }
+            personajeActivo.oro -= item.precio;
+            hudGold.innerText = personajeActivo.oro;
+            selectedGold.innerText = `Oro: ${personajeActivo.oro}`;
+            badgeOro.innerText = `💰 ${personajeActivo.oro} oro`;
+            escribirLog(`Has comprado ${item.nombre} por ${item.precio} de oro.`);
+        }
+
+        document.querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                cargarTienda(chip.dataset.rareza);
+            });
+        });
+
+        /* ================== INVENTARIO ================== */
+        async function cargarInventario(personajeId) {
+            inventoryGrid.innerHTML = `<div class="empty-state"><span>⌛</span><p>Cargando mochila...</p></div>`;
+            try {
+                const res = await fetch(`/api/inventario/?id=${personajeId}`);
+                const items = await res.json();
+                badgeItems.innerText = `${items.length} objeto${items.length === 1 ? '' : 's'}`;
+
+                if (!items.length) {
+                    inventoryGrid.innerHTML = `<div class="empty-state"><span>🎒</span><p>Mochila vacía.</p></div>`;
+                    return;
+                }
+
+                inventoryGrid.innerHTML = items.map(it => {
+                    const rar = (it.rareza || 'Común').toLowerCase();
+                    return `
+                        <div class="inv-item rar-${rar} ${it.equipado ? 'equipped' : ''}">
+                            <div class="inv-icon">⚔️</div>
+                            <strong>${it.item_nombre}</strong>
+                            <span class="inv-rar">${it.rareza}</span>
+                            <p>x${it.cantidad}</p>
+                            ${it.equipado ? '<span class="equipped-tag">Equipado</span>' : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                inventoryGrid.innerHTML = `<div class="empty-state"><span>⚠️</span><p>Error cargando inventario.</p></div>`;
+            }
+        }
+
+        /* ================== COMBATE ================== */
+        async function cargarEnemigos() {
+            try {
+                const res = await fetch('/api/enemigos');
+                enemigosActuales = await res.json();
+                document.getElementById('kpi-enemigos').innerText = enemigosActuales.length;
+
+                menuEnemigos.innerHTML = '<option value="">Selecciona un enemigo...</option>' +
+                    enemigosActuales.map(e =>
+                        `<option value="${e.id}">${e.nombre} — Lv ${e.nivel} (${e.vida_max} HP)</option>`
+                    ).join('');
+            } catch {
+                menuEnemigos.innerHTML = '<option value="">Error cargando enemigos</option>';
+            }
+        }
+
+        btnIniciarCombate.addEventListener('click', () => {
+            if (!personajeActivo) {
+                escribirLog("Elige un héroe antes de combatir.");
+                return;
+            }
+            const enemigo = enemigosActuales.find(e => String(e.id) === String(menuEnemigos.value));
+            if (!enemigo) {
+                escribirLog("Elige un enemigo válido.");
+                return;
+            }
+
+            combateState = {
+                turno: 1,
+                heroe: {
+                    id: personajeActivo.id,
+                    nombre: personajeActivo.nombre,
+                    hp: personajeActivo.vida_actual,
+                    hpMax: getVidaMax(personajeActivo),
+                    fuerza: personajeActivo.fuerza ?? 12
+                },
+                enemigo: {
+                    id: enemigo.id,
+                    nombre: enemigo.nombre,
+                    hp: enemigo.vida_max,
+                    hpMax: enemigo.vida_max,
+                    dano: enemigo.dano_base
+                },
+                defendiendo: false
+            };
+
+            // Render arena
+            document.getElementById('hero-avatar').innerText = (personajeActivo.nombre || '?').charAt(0).toUpperCase();
+            document.getElementById('hero-name').innerText = personajeActivo.nombre;
+            document.getElementById('enemy-avatar').innerText = '👹';
+            document.getElementById('enemy-name').innerText = enemigo.nombre;
+            actualizarBarrasCombate();
+            combatArena.classList.remove('hidden');
+            combatActions.classList.remove('hidden');
+            combatLog.innerHTML = `<p>&gt; ¡${personajeActivo.nombre} desafía a ${enemigo.nombre}!</p>`;
+            badgeTurno.innerText = `Turno ${combateState.turno}`;
+        });
+
+        function actualizarBarrasCombate() {
+            const h = combateState.heroe;
+            const e = combateState.enemigo;
+            document.getElementById('hero-hp-fill').style.width = `${Math.max(0, h.hp / h.hpMax * 100)}%`;
+            document.getElementById('hero-hp-text').innerText = `${Math.max(0, h.hp)}/${h.hpMax}`;
+            document.getElementById('enemy-hp-fill').style.width = `${Math.max(0, e.hp / e.hpMax * 100)}%`;
+            document.getElementById('enemy-hp-text').innerText = `${Math.max(0, e.hp)}/${e.hpMax}`;
+        }
+
+        function logCombate(msg) {
+            const p = document.createElement('p');
+            p.innerHTML = '&gt; ' + msg;
+            combatLog.appendChild(p);
+            combatLog.scrollTop = combatLog.scrollHeight;
+        }
+
+        function rand(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function registrarAccionBackend(accion, danoInfligido, danoRecibido, resultado) {
+            fetch('/api/combate/registro', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_personaje: combateState.heroe.id,
+                    id_enemigo: combateState.enemigo.id,
+                    turno: combateState.turno,
+                    accion: accion,
+                    dano_infligido: danoInfligido,
+                    dano_received: danoRecibido,
+                    resultado: resultado
+                })
+            }).catch(() => {});
+        }
+
+        function turnoEnemigo() {
+            if (combateState.enemigo.hp <= 0) return finalizarCombate('victoria');
+            const danoBase = combateState.enemigo.dano;
+            const dano = combateState.defendiendo ? Math.max(1, Math.floor(danoBase / 2)) : danoBase + rand(-2, 2);
+            combateState.heroe.hp -= dano;
+            logCombate(`👹 ${combateState.enemigo.nombre} te golpea por <b>${dano}</b> de daño${combateState.defendiendo ? ' (mitigado)' : ''}.`);
+            combateState.defendiendo = false;
+            actualizarBarrasCombate();
+            if (combateState.heroe.hp <= 0) return finalizarCombate('derrota');
+            combateState.turno++;
+            badgeTurno.innerText = `Turno ${combateState.turno}`;
+        }
+
+        combatActions.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!combateState) return;
+                const accion = btn.dataset.accion;
+
+                if (accion === 'huir') {
+                    logCombate(`🏃 Huyes del combate.`);
+                    registrarAccionBackend('huir', 0, 0, 'huida');
+                    finalizarCombate('huida');
+                    return;
+                }
+
+                let danoInfligido = 0;
+                if (accion === 'atacar') {
+                    danoInfligido = rand(8, 18);
+                    combateState.enemigo.hp -= danoInfligido;
+                    logCombate(`🗡️ Atacas a ${combateState.enemigo.nombre} y haces <b>${danoInfligido}</b> de daño.`);
+                } else if (accion === 'especial') {
+                    danoInfligido = rand(18, 32);
+                    combateState.enemigo.hp -= danoInfligido;
+                    logCombate(`✨ Lanzas una habilidad especial: <b>${danoInfligido}</b> de daño crítico.`);
+                } else if (accion === 'defender') {
+                    combateState.defendiendo = true;
+                    logCombate(`🛡️ Adoptas postura defensiva.`);
+                }
+
+                actualizarBarrasCombate();
+
+                if (combateState.enemigo.hp <= 0) {
+                    registrarAccionBackend(accion, danoInfligido, 0, 'victoria');
+                    return finalizarCombate('victoria');
+                }
+                registrarAccionBackend(accion, danoInfligido, 0, 'continua');
+                setTimeout(turnoEnemigo, 600);
+            });
+        });
+
+        function finalizarCombate(resultado) {
+            combatActions.classList.add('hidden');
+            if (resultado === 'victoria') {
+                logCombate(`🏆 <b>¡Victoria!</b> Has derrotado a ${combateState.enemigo.nombre}.`);
+            } else if (resultado === 'derrota') {
+                logCombate(`💀 <b>Has caído</b> en combate...`);
+            } else {
+                logCombate(`Combate finalizado.`);
+            }
+            combateState = null;
+        }
+
+        /* ================== SOCKET ================== */
         socket.on('connect', () => {
             dot.className = 'dot connected';
             text.innerText = 'Conectado';
-            console.log("Conectado con éxito");
+            escribirLog("Conectado con éxito al servidor.");
+            pedirPersonajes();
+            cargarTienda();
+            cargarEnemigos();
         });
 
         socket.on('disconnect', () => {
             dot.className = 'dot disconnected';
             text.innerText = 'Desconectado';
+            escribirLog("Se perdió la conexión con el servidor.");
         });
 
-        // Escuchar mensajes del servidor
-        socket.on('status', (data) => {
-            logBox.innerText = "> " + data.msg;
+        socket.on('status', (data) => escribirLog(data.msg));
+
+        socket.on('personajes', (lista) => {
+            personajesActuales = lista || [];
+            contenedor.innerHTML = "";
+            document.getElementById('kpi-heroes').innerText = personajesActuales.length;
+
+            if (!lista || lista.length === 0) {
+                menuPersonajes.innerHTML = '<option value="">No hay personajes disponibles</option>';
+                personajeSeleccionado.classList.add('hidden');
+                contenedor.innerHTML = `<div class="empty-state"><span>🕯️</span><p>No hay aventureros registrados.</p></div>`;
+                contadorPersonajes.innerText = "0 héroes";
+                return;
+            }
+
+            llenarMenuPersonajes(lista);
+            contadorPersonajes.innerText = `${lista.length} héroe${lista.length === 1 ? "" : "s"}`;
+
+            lista.forEach((p) => {
+                const vida = Number(p.vida_actual || 0);
+                const vidaMax = getVidaMax(p);
+                const porcentaje = Math.max(0, Math.min(100, (vida / vidaMax) * 100));
+                const claseNombre = NOMBRES_CLASES[p.id_clase] || 'Aventurero';
+
+                contenedor.innerHTML += `
+                    <div class="card-personaje" data-personaje-id="${p.id}">
+                        <div class="card-top">
+                            <div class="avatar">${(p.nombre || "?").charAt(0).toUpperCase()}</div>
+                            <div>
+                                <h3>${p.nombre || "Aventurero"}</h3>
+                                <p>${claseNombre}</p>
+                            </div>
+                        </div>
+                        <div class="stats-grid">
+                            <div><span>Nivel</span><strong>${p.nivel ?? 1}</strong></div>
+                            <div><span>Oro</span><strong>${p.oro ?? 0}</strong></div>
+                        </div>
+                        <div class="health-block">
+                            <div class="health-info"><span>Vida</span><strong>${vida}/${vidaMax}</strong></div>
+                            <div class="health-bar"><div style="width: ${porcentaje}%"></div></div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.querySelectorAll('.card-personaje').forEach(card => {
+                card.addEventListener('click', () => {
+                    const idPersonaje = card.dataset.personajeId;
+                    menuPersonajes.value = idPersonaje;
+                    seleccionarPersonaje(idPersonaje);
+                });
+            });
+
+            escribirLog("Aventureros cargados correctamente.");
         });
 
-        // 1. Pedir los personajes en cuanto conectamos
-    socket.on('connect', () => {
-        socket.emit('obtener_personajes'); // Avisamos al Python que queremos la lista
-    });
-
-    // 2. Escuchar la respuesta del servidor
-    socket.on('personajes', (lista) => {
-        const contenedor = document.getElementById('contenedor-personajes');
-        contenedor.innerHTML = ""; // Limpiar antes de llenar
-
-    lista.forEach(p => {
-        // Creamos el HTML dinámicamente para cada personaje
-        contenedor.innerHTML += `
-            <div class="card-personaje">
-                <h3>${p.nombre}</h3>
-                <p class="info-p">⭐ Nivel: ${p.nivel}</p>
-                <p class="info-p">💰 Oro: ${p.oro}</p>
-                <p class="info-p">❤️ Vida: ${p.vida_actual}</p>
-            </div>
-        `;
-    });
-});
-
+        btnRecargar.addEventListener('click', pedirPersonajes);
     </script>
 </body>
 </html>

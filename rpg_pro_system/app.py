@@ -16,7 +16,8 @@ from models.Personaje_Logro import Personaje_Logro
 from models.Raza import Raza
 from models.Habilidad_Requisitos import Habilidad_Requisitos
 from models.Registro_Combate import Registro_Combate
-
+from models.Tipo_Item import Tipo_Item
+from models.Habilidades import Habilidades
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -210,9 +211,38 @@ def api_tipos_item():
     Lista todas las categorías de items existentes.
     URL: http://localhost:5000/api/items/tipos
     """
-    from models.Tipo_Item import Tipo_Item
     datos = Tipo_Item.obtener_tipos(get_db_connection)
     return jsonify(datos)
+
+
+@app.route('/api/habilidades')
+def api_habilidades():
+    """
+    Obtiene el catálogo de habilidades disponibles en el juego.
+    Soporta filtrado opcional por ID de clase mediante parámetros de consulta.
+    Ejemplo: /api/habilidades?clase=1
+    """
+    try:
+        # 1. Obtener el parámetro 'clase' de la URL (si existe)
+        clase_id = request.args.get('clase', type=int)
+
+        # 2. Consultar la base de datos a través del método estático
+        datos = Habilidades.obtener_habilidades(get_db_connection, clase_id)
+
+        # 3. Retornar los datos en formato JSON
+        # Si no hay habilidades, devolvemos una lista vacía con status 200
+        return jsonify(datos), 200
+
+    except Exception as e:
+        # Registro del error en consola para el desarrollador
+        print(f"❌ Error en el endpoint /api/habilidades: {str(e)}")
+
+        # Respuesta elegante para el cliente
+        return jsonify({
+            "error": "No se pudo obtener la lista de habilidades",
+            "detalle": str(e) if app.debug else "Error interno del servidor"
+        }), 500
+
 
 # --- TEST DE CONEXIÓN ---
 @socketio.on('connect')

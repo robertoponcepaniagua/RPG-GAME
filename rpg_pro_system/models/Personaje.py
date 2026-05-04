@@ -1,3 +1,6 @@
+from database.db import get_db_connection
+
+
 class Personaje:
     def __init__(self, id, nombre, nivel, exp, oro, vida_actual, id_raza, id_clase):
         self.id = id
@@ -50,3 +53,48 @@ class Personaje:
                 print(f"❌ Error al consultar personajes: {e}")
 
         return personajes_data
+
+    @staticmethod
+    def obtener_habilidades_por_personaje(get_db_connection, id_personaje):
+        """
+        Devuelve la lista de habilidades que un personaje ha aprendido,
+        junto con su nivel_actual y exp_habilidad.
+        Hace JOIN entre Personajes_Habilidades y Habilidades para incluir
+        el nombre, descripción, tipo, costo de maná y daño base.
+        """
+        habilidades_personaje = []
+        with get_db_connection() as conexion:
+            if conexion is None: return []
+            try:
+                with conexion.cursor() as cursor:
+                    # SQL con JOIN para traer los datos de la habilidad y el nivel del personaje
+                    query = """
+                            SELECT h.id, \
+                                   h.nombre, \
+                                   h.descripcion, \
+                                   h.tipo,
+                                   ph.nivel_actual, \
+                                   h.nivel_maximo, \
+                                   h.costo_mana, \
+                                   h.dano_base
+                            FROM Habilidades h
+                                     INNER JOIN Personaje_Habilidades ph ON h.id = ph.id_habilidad
+                            WHERE ph.id_personaje = %s \
+                            """
+                    cursor.execute(query, (id_personaje,))
+                    filas = cursor.fetchall()
+
+                    for f in filas:
+                        habilidades_personaje.append({
+                            "id": f[0],
+                            "nombre": f[1],
+                            "descripcion": f[2],
+                            "tipo": f[3],
+                            "nivel_progreso": f"{f[4]}/{f[5]}",  # Ejemplo: "3/5"
+                            "nivel_actual": f[4],
+                            "costo_mana": f[6],
+                            "dano": f[7]
+                        })
+            except Exception as e:
+                print(f"❌ Error al obtener habilidades del personaje {id_personaje}: {e}")
+        return habilidades_personaje

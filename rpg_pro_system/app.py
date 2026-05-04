@@ -13,7 +13,8 @@ from models.Inventario import Inventario
 from models.Item import Item
 from models.Logro import Logro
 from models.Personaje_Logro import Personaje_Logro
-
+from models.Raza import Raza
+from models.Habilidad_Requisitos import Habilidad_Requisitos
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -150,6 +151,24 @@ def api_personaje_logros(id):
     """
     from models.Personaje_Logro import Personaje_Logro
     datos = Personaje_Logro.obtener_logros_desbloqueados(get_db_connection, id)
+    return jsonify(datos)
+
+@app.route('/api/razas/')
+def api_razas():
+    """
+    Muestra las razas disponibles y sus estadísticas.
+    URL: http://localhost:5000/api/razas/
+    """
+    datos = Raza.obtener_razas(get_db_connection)
+    return jsonify(datos)
+
+@app.route('/api/habilidades/<int:id>/requisitos')
+def api_requisitos_habilidad(id):
+    """
+    Muestra qué necesitas para desbloquear la habilidad X.
+    URL: http://localhost:5000/api/habilidades/5/requisitos
+    """
+    datos = Habilidad_Requisitos.obtener_requisitos_de_habilidad(get_db_connection, id)
     return jsonify(datos)
 
 # --- TEST DE CONEXIÓN ---

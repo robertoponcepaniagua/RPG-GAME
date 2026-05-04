@@ -11,6 +11,9 @@ from models.Guerrero import Guerrero
 from models.Mago import Mago
 from models.Inventario import Inventario
 from models.Item import Item
+from models.Logro import Logro
+from models.Personaje_Logro import Personaje_Logro
+
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -112,6 +115,41 @@ def api_items():
     # Llamamos al método estático de la clase Item
     datos = Item.obtener_items(get_db_connection, tipo=tipo_id, rareza=rareza)
 
+    return jsonify(datos)
+
+
+@app.route('/api/logros/')
+def api_lista_logros():
+    """
+    Muestra todos los logros que existen en el juego (el catálogo).
+    URL: http://localhost:5000/api/logros/
+    """
+    datos = Logro.obtener_logros(get_db_connection)
+    return jsonify(datos)
+
+
+@app.route('/api/personaje/<int:personaje_id>/logros')
+def api_logros_personaje(personaje_id):
+    """
+    Muestra solo los logros que ha desbloqueado un personaje concreto.
+    URL: http://localhost:5000/api/personaje/1/logros
+    """
+    # Llamamos al método que usa el JOIN para traer nombre e icono
+    datos = Personaje_Logro.obtener_logros_desbloqueados(get_db_connection, personaje_id)
+
+    if not datos:
+        # Si no tiene logros, devolvemos una lista vacía con un 200 OK (es normal ser un novato)
+        return jsonify([])
+
+    return jsonify(datos)
+
+@app.route('/api/personaje/<int:id>/logros')
+def api_personaje_logros(id):
+    """
+    URL: c
+    """
+    from models.Personaje_Logro import Personaje_Logro
+    datos = Personaje_Logro.obtener_logros_desbloqueados(get_db_connection, id)
     return jsonify(datos)
 
 # --- TEST DE CONEXIÓN ---

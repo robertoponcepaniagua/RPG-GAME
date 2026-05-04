@@ -15,6 +15,8 @@ from models.Logro import Logro
 from models.Personaje_Logro import Personaje_Logro
 from models.Raza import Raza
 from models.Habilidad_Requisitos import Habilidad_Requisitos
+from models.Registro_Combate import Registro_Combate
+
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -169,6 +171,47 @@ def api_requisitos_habilidad(id):
     URL: http://localhost:5000/api/habilidades/5/requisitos
     """
     datos = Habilidad_Requisitos.obtener_requisitos_de_habilidad(get_db_connection, id)
+    return jsonify(datos)
+
+
+@app.route('/api/combate/registro', methods=['POST'])
+def registrar_accion():
+    """
+    Registra una nueva acción de combate.
+    """
+    datos = request.json
+
+    nuevo_registro = Registro_Combate(
+        id_personaje=datos['id_personaje'],
+        id_enemigo=datos['id_enemigo'],
+        turno=datos['turno'],
+        accion=datos['accion'],
+        dano_infligido=datos['dano_infligido'],
+        dano_received=datos['dano_received'],
+        resultado=datos['resultado']
+    )
+
+    if Registro_Combate.registrar_turno(get_db_connection, nuevo_registro):
+        return jsonify({"mensaje": "Acción registrada"}), 201
+    return jsonify({"error": "No se pudo registrar"}), 500
+
+
+@app.route('/api/personaje/<int:id>/historial')
+def api_historial_combate(id):
+    """
+    URL: http://localhost:5000/api/personaje/1/historial
+    """
+    datos = Registro_Combate.obtener_historial_personaje(get_db_connection, id)
+    return jsonify(datos)
+
+@app.route('/api/items/tipos')
+def api_tipos_item():
+    """
+    Lista todas las categorías de items existentes.
+    URL: http://localhost:5000/api/items/tipos
+    """
+    from models.Tipo_Item import Tipo_Item
+    datos = Tipo_Item.obtener_tipos(get_db_connection)
     return jsonify(datos)
 
 # --- TEST DE CONEXIÓN ---

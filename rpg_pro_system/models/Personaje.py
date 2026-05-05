@@ -98,3 +98,338 @@ class Personaje:
             except Exception as e:
                 print(f"❌ Error al obtener habilidades del personaje {id_personaje}: {e}")
         return habilidades_personaje
+
+    @staticmethod
+    def subir_nivel(get_db_connection, id_personaje):
+        """
+        Sube de nivel a un personaje si tiene experiencia suficiente.
+
+        Fórmula usada:
+        - EXP necesaria = nivel_actual * 1000
+
+        Mejoras por nivel:
+        - vida_max +20
+        - vida_actual se cura al máximo
+        - mana_max +10
+        - mana_actual se recupera al máximo
+        - fuerza +2
+        - agilidad +1
+        - inteligencia +1
+        """
+        with get_db_connection() as conexion:
+            if conexion is None:
+                return {
+                    "ok": False,
+                    "mensaje": "No se pudo conectar con la base de datos."
+                }
+
+            try:
+                with conexion.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT id,
+                               nombre,
+                               nivel,
+                               exp,
+                               vida_max,
+                               vida_actual,
+                               mana_max,
+                               mana_actual,
+                               fuerza,
+                               agilidad,
+                               inteligencia
+                        FROM Personajes
+                        WHERE id = %s
+                        """,
+                        (id_personaje,)
+                    )
+
+                    personaje = cursor.fetchone()
+
+                    if personaje is None:
+                        return {
+                            "ok": False,
+                            "mensaje": f"No existe ningún personaje con id {id_personaje}."
+                        }
+
+                    (
+                        id_db,
+                        nombre,
+                        nivel,
+                        exp,
+                        vida_max,
+                        vida_actual,
+                        mana_max,
+                        mana_actual,
+                        fuerza,
+                        agilidad,
+                        inteligencia
+                    ) = personaje
+
+                    nivel_inicial = nivel
+                    exp_necesaria = nivel * 1000
+
+                    if exp < exp_necesaria:
+                        return {
+                            "ok": False,
+                            "mensaje": f"{nombre} no tiene experiencia suficiente para subir de nivel.",
+                            "personaje": {
+                                "id": id_db,
+                                "nombre": nombre,
+                                "nivel": nivel,
+                                "exp": exp,
+                                "exp_necesaria": exp_necesaria
+                            }
+                        }
+
+                    niveles_subidos = 0
+
+                    while exp >= exp_necesaria:
+                        exp -= exp_necesaria
+                        nivel += 1
+                        niveles_subidos += 1
+
+                        vida_max += 20
+                        mana_max += 10
+                        fuerza += 2
+                        agilidad += 1
+                        inteligencia += 1
+
+                        exp_necesaria = nivel * 1000
+
+                    vida_actual = vida_max
+                    mana_actual = mana_max
+
+                    cursor.execute(
+                        """
+                        UPDATE Personajes
+                        SET nivel        = %s,
+                            exp          = %s,
+                            vida_max     = %s,
+                            vida_actual  = %s,
+                            mana_max     = %s,
+                            mana_actual  = %s,
+                            fuerza       = %s,
+                            agilidad     = %s,
+                            inteligencia = %s
+                        WHERE id = %s
+                        """,
+                        (
+                            nivel,
+                            exp,
+                            vida_max,
+                            vida_actual,
+                            mana_max,
+                            mana_actual,
+                            fuerza,
+                            agilidad,
+                            inteligencia,
+                            id_personaje
+                        )
+                    )
+
+                    conexion.commit()
+
+                    return {
+                        "ok": True,
+                        "mensaje": f"🎉 {nombre} subió {niveles_subidos} nivel(es): {nivel_inicial} → {nivel}",
+                        "personaje": {
+                            "id": id_db,
+                            "nombre": nombre,
+                            "nivel_anterior": nivel_inicial,
+                            "nivel_actual": nivel,
+                            "niveles_subidos": niveles_subidos,
+                            "exp_restante": exp,
+                            "exp_para_siguiente_nivel": exp_necesaria,
+                            "vida_max": vida_max,
+                            "vida_actual": vida_actual,
+                            "mana_max": mana_max,
+                            "mana_actual": mana_actual,
+                            "fuerza": fuerza,
+                            "agilidad": agilidad,
+                            "inteligencia": inteligencia
+                        }
+                    }
+
+            except Exception as e:
+                conexion.rollback()
+                print(f"❌ Error al subir de nivel al personaje {id_personaje}: {e}")
+
+                return {
+                    "ok": False,
+                    "mensaje": f"Error al subir de nivel al personaje {id_personaje}.",
+                    "error": str(e)
+                }
+
+    @staticmethod
+    def subir_nivel_habilidad(get_db_connection, id_personaje, id_habilidad):
+        """
+        Sube de nivel una habilidad de un personaje.
+
+        Reglas:
+        - El personaje debe existir.
+        - La habilidad debe existir.
+        - La habilidad debe pertenecer a la clase del personaje o ser genérica.
+        - La habilidad no puede superar su nivel máximo.
+        - Si la habilidad tiene requisitos, el personaje debe cumplirlos.
+        - Si el personaje no tiene la habilidad, se desbloquea en nivel 1.
+        - Si ya la tiene, sube 1 nivel.
+        """
+        with get_db_connection() as conexion:
+            if conexion is None:
+                return {
+                    "ok": False,
+                    "mensaje": "No se pudo conectar con la base de datos."
+                }
+
+            try:
+                with conexion.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT id, nombre, id_clase
+                        FROM Personajes
+                        WHERE id = %s
+                        """,
+                        (id_personaje,)
+                    )
+                    personaje = cursor.fetchone()
+
+                    if personaje is None:
+                        return {
+                            "ok": False,
+                            "mensaje": f"No existe ningún personaje con id {id_personaje}."
+                        }
+
+                    id_personaje_db, nombre_personaje, id_clase_personaje = personaje
+
+                    cursor.execute(
+                        """
+                        SELECT id, nombre, nivel_maximo, id_clase
+                        FROM Habilidades
+                        WHERE id = %s
+                        """,
+                        (id_habilidad,)
+                    )
+                    habilidad = cursor.fetchone()
+
+                    if habilidad is None:
+                        return {
+                            "ok": False,
+                            "mensaje": f"No existe ninguna habilidad con id {id_habilidad}."
+                        }
+
+                    id_habilidad_db, nombre_habilidad, nivel_maximo, id_clase_habilidad = habilidad
+
+                    if id_clase_habilidad is not None and id_clase_habilidad != id_clase_personaje:
+                        return {
+                            "ok": False,
+                            "mensaje": f"{nombre_personaje} no puede aprender {nombre_habilidad} porque no pertenece a su clase."
+                        }
+
+                    cursor.execute(
+                        """
+                        SELECT nivel_actual
+                        FROM Personajes_Habilidades
+                        WHERE id_personaje = %s
+                          AND id_habilidad = %s
+                        """,
+                        (id_personaje, id_habilidad)
+                    )
+                    habilidad_personaje = cursor.fetchone()
+
+                    nivel_actual = habilidad_personaje[0] if habilidad_personaje else 0
+
+                    if nivel_actual >= nivel_maximo:
+                        return {
+                            "ok": False,
+                            "mensaje": f"{nombre_habilidad} ya está al nivel máximo.",
+                            "habilidad": {
+                                "id": id_habilidad_db,
+                                "nombre": nombre_habilidad,
+                                "nivel_actual": nivel_actual,
+                                "nivel_maximo": nivel_maximo
+                            }
+                        }
+
+                    cursor.execute(
+                        """
+                        SELECT hr.id_requisito,
+                               h.nombre,
+                               hr.nivel_requisito_necesario,
+                               COALESCE(ph.nivel_actual, 0) AS nivel_actual_personaje
+                        FROM Habilidades_Requisitos hr
+                                 INNER JOIN Habilidades h ON hr.id_requisito = h.id
+                                 LEFT JOIN Personajes_Habilidades ph
+                                           ON ph.id_habilidad = hr.id_requisito
+                                               AND ph.id_personaje = %s
+                        WHERE hr.id_habilidad = %s
+                        """,
+                        (id_personaje, id_habilidad)
+                    )
+                    requisitos = cursor.fetchall()
+
+                    requisitos_faltantes = []
+
+                    for requisito in requisitos:
+                        id_requisito, nombre_requisito, nivel_necesario, nivel_actual_requisito = requisito
+
+                        if nivel_actual_requisito < nivel_necesario:
+                            requisitos_faltantes.append({
+                                "id_requisito": id_requisito,
+                                "nombre": nombre_requisito,
+                                "nivel_necesario": nivel_necesario,
+                                "nivel_actual": nivel_actual_requisito
+                            })
+
+                    if requisitos_faltantes:
+                        return {
+                            "ok": False,
+                            "mensaje": f"{nombre_personaje} no cumple los requisitos para mejorar {nombre_habilidad}.",
+                            "requisitos_faltantes": requisitos_faltantes
+                        }
+
+                    nuevo_nivel = nivel_actual + 1
+
+                    if habilidad_personaje is None:
+                        cursor.execute(
+                            """
+                            INSERT INTO Personajes_Habilidades
+                                (id_personaje, id_habilidad, nivel_actual, exp_habilidad)
+                            VALUES (%s, %s, %s, %s)
+                            """,
+                            (id_personaje, id_habilidad, nuevo_nivel, 0)
+                        )
+                    else:
+                        cursor.execute(
+                            """
+                            UPDATE Personajes_Habilidades
+                            SET nivel_actual = %s
+                            WHERE id_personaje = %s
+                              AND id_habilidad = %s
+                            """,
+                            (nuevo_nivel, id_personaje, id_habilidad)
+                        )
+
+                    conexion.commit()
+
+                    return {
+                        "ok": True,
+                        "mensaje": f"✨ {nombre_personaje} mejoró {nombre_habilidad}: nivel {nivel_actual} → {nuevo_nivel}",
+                        "habilidad": {
+                            "id": id_habilidad_db,
+                            "nombre": nombre_habilidad,
+                            "nivel_anterior": nivel_actual,
+                            "nivel_actual": nuevo_nivel,
+                            "nivel_maximo": nivel_maximo
+                        }
+                    }
+
+            except Exception as e:
+                conexion.rollback()
+                print(f"❌ Error al subir nivel de habilidad: {e}")
+
+                return {
+                    "ok": False,
+                    "mensaje": "Error al subir el nivel de la habilidad.",
+                    "error": str(e)
+                }

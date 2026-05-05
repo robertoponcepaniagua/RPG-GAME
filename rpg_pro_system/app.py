@@ -244,6 +244,27 @@ def api_habilidades():
         }), 500
 
 
+# Ruta para subir nivel de personaje
+@app.route('/api/personaje/subir-nivel', methods=['POST'])
+def api_subir_nivel():
+    data = request.json
+    id_personaje = data.get('id_personaje')
+
+    # Invocamos tu método estático
+    resultado = Personaje.subir_nivel(get_db_connection, id_personaje)
+    return jsonify(resultado)
+
+
+# Ruta para subir nivel de habilidad
+@app.route('/api/habilidad/subir-nivel', methods=['POST'])
+def api_subir_habilidad():
+    data = request.json
+    id_personaje = data.get('id_personaje')
+    id_habilidad = data.get('id_habilidad')
+
+    resultado = Personaje.subir_nivel_habilidad(get_db_connection, id_personaje, id_habilidad)
+    return jsonify(resultado)
+
 # --- TEST DE CONEXIÓN ---
 @socketio.on('connect')
 def test_db_connection():

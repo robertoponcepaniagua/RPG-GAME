@@ -912,3 +912,30 @@ select option { background: #0d1018; color: var(--text); }
     .selected-stats span { width: 100%; }
     .kingdom-stats { grid-template-columns: 1fr; }
 }
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #fff;
+    z-index: 9999;
+    animation: slideIn 0.3s ease, fadeOut 0.4s ease 2.6s forwards;
+    max-width: 320px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.toast.error  { background: #dc2626; border-left: 4px solid #991b1b; }
+.toast.ok     { background: #16a34a; border-left: 4px solid #14532d; }
+.toast.warn   { background: #d97706; border-left: 4px solid #92400e; }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; pointer-events: none; }
+}

@@ -101,6 +101,8 @@
                             <span id="selected-health">Vida: -</span>
                             <span id="selected-class">Clase: -</span>
                         </div>
+                        <span id="exp-info" style="font-size:0.8rem;opacity:0.6"></span>
+                        <button onclick="subirNivelPersonaje()" class="btn-level-up">⬆ Subir Nivel</button>
                     </div>
                 </div>
 
@@ -305,6 +307,15 @@
             logBox.innerText = "> " + mensaje;
         }
 
+        function mostrarToast(mensaje, tipo = 'error') {
+            document.querySelectorAll('.toast').forEach(t => t.remove());
+            const toast = document.createElement('div');
+            toast.className = `toast ${tipo}`;
+            toast.innerText = mensaje;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
         function pedirPersonajes() {
             escribirLog("Solicitando aventureros al servidor...");
             socket.emit('obtener_personajes');
@@ -433,7 +444,7 @@
                             <span>💧 <b>${stats.mana ?? 0}</b></span>
                             <span>⚔ <b>${stats.dano ?? 0}</b></span>
                         </div>
-                        <button onclick="socket.emit('mejorar_habilidad', {id: ${h.id}})">Mejorar</button>
+                        <button onclick="mejorarHabilidad(${h.id})">⬆ Mejorar</button>
                     </div>
                     ${arrow}
                 `;
@@ -768,6 +779,109 @@
         });
 
         btnRecargar.addEventListener('click', pedirPersonajes);
+
+                // ================== MEJORAR HABILIDAD ==================
+        async function mejorarHabilidad(idHabilidad) {
+            if (!personajeActivo) {
+                escribirLog("Selecciona un héroe antes de mejorar habilidades.");
+                return;
+            }
+            try {
+                const res = await fetch('/api/habilidad/subir-nivel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_personaje: personajeActivo.id,
+                        id_habilidad: idHabilidad
+                    })
+                });
+                const resultado = await res.json();
+
+                if (!resultado.ok) {
+                    if (resultado.requisitos_faltantes?.length) {
+                        const lista = resultado.requisitos_faltantes
+                            .map(r => `${r.nombre} (necesitas Lv ${r.nivel_necesario}, tienes Lv ${r.nivel_actual})`)
+                            .join(' | ');
+                        escribirLog(`Requisitos faltantes: ${lista}`);
+                        mostrarToast(`Requisitos: ${lista}`, 'warn');
+                    } else {
+                        escribirLog(resultado.mensaje);
+                        mostrarToast(resultado.mensaje, 'warn');
+                    }
+                    return;
+                }
+
+                const hab = resultado.habilidad;
+                const nodo = document.querySelector(`[data-skill-id="${hab.id}"]`);
+                if (nodo) {
+                    let badge = nodo.querySelector('.skill-level-badge');
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'skill-level-badge';
+                        nodo.prepend(badge);
+                    }
+                    badge.innerText = `Lv ${hab.nivel_actual}`;
+                    if (hab.nivel_actual >= hab.nivel_maximo) {
+                        const btn = nodo.querySelector('button');
+                        if (btn) { btn.disabled = true; btn.innerText = '✅ Máximo'; }
+                    }
+                }
+
+                escribirLog(resultado.mensaje);
+                mostrarToast(resultado.mensaje, 'ok');
+
+            } catch (err) {
+                escribirLog("Error de red al mejorar la habilidad.");
+                console.error(err);
+            }
+        }
+
+                // ================== SUBIR NIVEL PERSONAJE ==================
+        async function subirNivelPersonaje() {
+            if (!personajeActivo) {
+                escribirLog("Selecciona un héroe antes de subir nivel.");
+                return;
+            }
+            try {
+                const res = await fetch('/api/personaje/subir-nivel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_personaje: personajeActivo.id })
+                });
+                const resultado = await res.json();
+
+                if (!resultado.ok) {
+                    escribirLog(resultado.mensaje);
+                    mostrarToast(resultado.mensaje, 'warn');
+                    return;
+                }
+
+                const datos = resultado.personaje;
+                personajeActivo.nivel        = datos.nivel_actual;
+                personajeActivo.vida_max     = datos.vida_max;
+                personajeActivo.vida_actual  = datos.vida_actual;
+                personajeActivo.fuerza       = datos.fuerza;
+                personajeActivo.agilidad     = datos.agilidad;
+                personajeActivo.inteligencia = datos.inteligencia;
+
+                hudLevel.innerText           = datos.nivel_actual;
+                hudHp.innerText              = `${datos.vida_actual}/${datos.vida_max}`;
+                selectedLevel.innerText      = `Nivel: ${datos.nivel_actual}`;
+                selectedHealth.innerText     = `Vida: ${datos.vida_actual}/${datos.vida_max}`;
+
+                const expInfo = document.getElementById('exp-info');
+                if (expInfo) expInfo.innerText = `EXP: ${datos.exp_restante} / ${datos.exp_para_siguiente_nivel}`;
+
+                escribirLog(resultado.mensaje);
+                mostrarToast(resultado.mensaje, 'ok');
+                pedirPersonajes();
+
+            } catch (err) {
+                escribirLog("Error de red al subir nivel.");
+                console.error(err);
+            }
+        }
+
     </script>
 </body>
 </html>

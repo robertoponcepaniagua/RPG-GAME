@@ -22,6 +22,17 @@ from models.Habilidades import Habilidades
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# ---- CÓDIGOS DE ESTADO ----
+
+#Código	Categoría	Significado Simple
+#200	Éxito	"¡Perfecto! Toodo funcionando."
+#201	Éxito	"¡Creado! (ej. cuando creas un personaje nuevo)."
+#400	Error Cliente	"Me enviaste algo mal."
+#401	Error Cliente	"No tienes permiso (no estás logueado)."
+#404	Error Cliente	"No lo encuentro (la URL o el ID no existen)."
+#500	Error Servidor	"¡Ups! Mi código de Python explotó (un error de base de datos o sintaxis)."
+
+
 # --- DEFINICIÓN DE LA URL ----
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://rpguser:rpgpassword@db:5432/rpg_db")
 
@@ -121,9 +132,6 @@ def api_items():
 
     return jsonify(datos)
 
-
-@ap.route('api/toggle_equipar_desequipar/<int:id>', methods=['POST'])
-def toggle_equipar_desequipar(id):
 
 
 @app.route('/api/logros/')
@@ -249,7 +257,7 @@ def api_habilidades():
 
 
 # Ruta para subir nivel de personaje
-@app.route('/api/personaje/subir-nivel', methods=['POST'])
+@app.route('/api/personaje/subir-nivel/int ', methods=['POST'])
 def api_subir_nivel():
     data = request.json
     id_personaje = data.get('id_personaje')
@@ -258,6 +266,14 @@ def api_subir_nivel():
     resultado = Personaje.subir_nivel(get_db_connection, id_personaje)
     return jsonify(resultado)
 
+@app.route('/api/personaje/recompensa/<int:id_personaje>/<int:id_enemigo>', methods=['GET', 'POST'])
+def api_recompensa(id_personaje, id_enemigo):
+    resultado = Personaje.ganar_exp_y_oro(id_personaje, id_enemigo, get_db_connection)
+
+    if resultado["ok"]:
+        return jsonify(resultado), 200
+    else:
+        return jsonify(resultado), 400
 
 # Ruta para subir nivel de habilidad
 @app.route('/api/habilidad/subir-nivel', methods=['POST'])

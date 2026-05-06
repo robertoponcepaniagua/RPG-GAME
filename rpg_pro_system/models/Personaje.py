@@ -433,3 +433,47 @@ class Personaje:
                     "mensaje": "Error al subir el nivel de la habilidad.",
                     "error": str(e)
                 }
+
+    @classmethod
+    def ganar_exp_y_oro(cls, id_personaje, id_enemigo, get_db_connection):
+        """
+        Busca al enemigo, obtiene su recompensa y la suma al personaje.
+        """
+        with get_db_connection() as conexion:
+            if conexion is None:
+                return {"ok": False, "mensaje": "No se pudo conectar con la base de datos."}
+
+            try:
+                with conexion.cursor() as cursor:
+                    # 1. BUSCAMOS EL ENEMIGO
+                    query_enemigo = "SELECT exp_recom, oro_recom FROM Enemigos WHERE id = %s"
+                    cursor.execute(query_enemigo, (id_enemigo,))
+                    recompensa = cursor.fetchone()
+
+                    if recompensa is None:
+                        return {
+                            "ok": False,
+                            "mensaje": "El enemigo no existe."
+                        }
+
+                    exp_recom, oro_recom = recompensa
+
+                    # 2. ACTUALIZAMOS EL PERSONAJE
+                    query_update = """
+                                   UPDATE Personajes
+                                   SET exp = exp + %s,
+                                       oro = oro + %s
+                                   WHERE id = %s \
+                                   """
+                    cursor.execute(query_update, (exp_recom, oro_recom, id_personaje))
+
+                    conexion.commit()
+
+                    return {
+                        "ok": True,
+                        "mensaje": f"¡Victoria! Ganaste {exp_recom} exp y {oro_recom} oro."
+                    }
+
+            except Exception as e:
+                conexion.rollback()
+                return {"ok": False, "mensaje": f"Error: {e}"}

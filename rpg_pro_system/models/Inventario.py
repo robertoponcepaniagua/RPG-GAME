@@ -1,3 +1,9 @@
+from os import access
+
+import flask
+
+from database.db import get_db_connection
+
 
 class Inventario:
     def __init__(self, id, id_personaje, id_item, cantidad, equipado):
@@ -69,3 +75,34 @@ class Inventario:
                 print(f"❌ Error al consultar inventario: {e}")
 
         return inventarios_data
+
+    def toggle_equipar_desequipar(self):
+        """
+        IDEA:
+        SI ESTÁ EQUIPADO, DESEQUIPAR
+        SI ESTÁ DESEQUIPADO, EQUIPAR
+        """
+
+        with get_db_connection() as conexion:
+            if conexion is None: return False
+
+        try:
+            with conexion.cursor() as cursor:
+                nuevo_equipado = not self.equipado
+
+            query = """
+            UPDATE Inventarios SET equipado = %s WHERE id = %s
+            """
+
+            cursor.execute(query, (self.id_personaje, self.id_item))
+            conexion.commit()
+            self.equipado = nuevo_equipado
+
+            accion = "Equipado" if nuevo_equipado else "Desequipar"
+
+            print(f"✨ Objeto {self.id_item}: {accion} con éxito.")
+            return True
+
+        except Exception as e:
+            print(f"❌ Error al cambiar estado de equipo: {e}")
+            return False

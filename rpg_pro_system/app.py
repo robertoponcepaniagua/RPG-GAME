@@ -122,6 +122,10 @@ def api_items():
     return jsonify(datos)
 
 
+@ap.route('api/toggle_equipar_desequipar/<int:id>', methods=['POST'])
+def toggle_equipar_desequipar(id):
+
+
 @app.route('/api/logros/')
 def api_lista_logros():
     """

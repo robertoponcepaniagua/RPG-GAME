@@ -79,30 +79,28 @@ class Inventario:
     def toggle_equipar_desequipar(self):
         """
         IDEA:
-        SI ESTÁ EQUIPADO, DESEQUIPAR
-        SI ESTÁ DESEQUIPADO, EQUIPAR
+        SI ESTÁ EQUIPADO, DESEQUIPAR. SI ESTÁ DESEQUIPADO, EQUIPAR.
+        Versión genérica usando el ID único del registro.
         """
-
         with get_db_connection() as conexion:
-            if conexion is None: return False
+            if conexion is None:
+                return False
 
-        try:
-            with conexion.cursor() as cursor:
-                nuevo_equipado = not self.equipado
+            try:
+                with conexion.cursor() as cursor:
+                    nuevo_equipado = not self.equipado
 
-            query = """
-            UPDATE Inventarios SET equipado = %s WHERE id = %s
-            """
+                    query = "UPDATE Inventarios SET equipado = %s WHERE id = %s"
 
-            cursor.execute(query, (self.id_personaje, self.id_item))
-            conexion.commit()
-            self.equipado = nuevo_equipado
+                    cursor.execute(query, (nuevo_equipado, self.id))
+                    conexion.commit()
 
-            accion = "Equipado" if nuevo_equipado else "Desequipar"
+                    self.equipado = nuevo_equipado
 
-            print(f"✨ Objeto {self.id_item}: {accion} con éxito.")
-            return True
+                    accion = "Equipado" if nuevo_equipado else "Desequipado"
+                    print(f"✨ Registro {self.id} (Objeto {self.id_item}): {accion} con éxito.")
+                    return True
 
-        except Exception as e:
-            print(f"❌ Error al cambiar estado de equipo: {e}")
-            return False
+            except Exception as e:
+                print(f"❌ Error al cambiar estado de equipo: {e}")
+                return False

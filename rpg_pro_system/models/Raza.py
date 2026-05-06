@@ -10,7 +10,7 @@ class Raza:
         self.mod_inteligencia = mod_inteligencia
         self.habilidad_racial = habilidad_racial
 
-    @staticmethod
+    @classmethod
     def obtener_razas(get_db_connection):
         """
         Obtiene el listado de todas las razas disponibles y sus bonificadores.

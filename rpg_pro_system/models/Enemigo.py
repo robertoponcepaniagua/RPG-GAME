@@ -18,8 +18,8 @@ class Enemigo:
         self.oro_recom = oro_recom
         self.descripcion = descripcion
 
-    @staticmethod
-    def obtener_enemigos(get_db_connection):
+    @classmethod
+    def obtener_enemigos(cls, get_db_connection):
         """
         Recibe la función de conexión como parámetro para evitar errores de importación.
         """

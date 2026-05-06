@@ -12,7 +12,7 @@ class Registro_Combate:
         self.resultado = resultado
         self.fecha = fecha or datetime.now()
 
-    @staticmethod
+    @classmethod
     def registrar_turno(get_db_connection, registro):
         """
         Guarda un nuevo movimiento de combate en la base de datos.
@@ -37,7 +37,7 @@ class Registro_Combate:
                 print(f"❌ Error al guardar registro de combate: {e}")
                 return False
 
-    @staticmethod
+    @classmethod
     def obtener_historial_personaje(get_db_connection, personaje_id):
         """
         Recupera todos los combates de un personaje, incluyendo el nombre del enemigo.

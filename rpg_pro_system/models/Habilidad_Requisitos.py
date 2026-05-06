@@ -4,8 +4,8 @@ class Habilidad_Requisitos:
         self.id_requisito = id_requisito
         self.nivel_requisito_necesario = nivel_requisito_necesario
 
-    @staticmethod
-    def obtener_requisitos_de_habilidad(get_db_connection, habilidad_id):
+    @classmethod
+    def obtener_requisitos_de_habilidad(cls, get_db_connection, habilidad_id):
         """
         Devuelve la lista de habilidades que necesitas tener para aprender una específica.
         """

@@ -12,8 +12,8 @@ class Personaje:
         self.id_raza = id_raza
         self.id_clase = id_clase
 
-    @staticmethod
-    def obtener_personajes(get_db_connection):
+    @classmethod
+    def obtener_personajes(cls ,get_db_connection):
         """
         Recibe la función de conexión como parámetro para evitar errores de importación.
         """
@@ -54,8 +54,8 @@ class Personaje:
 
         return personajes_data
 
-    @staticmethod
-    def obtener_habilidades_por_personaje(get_db_connection, id_personaje):
+    @classmethod
+    def obtener_habilidades_por_personaje(cls, get_db_connection, id_personaje):
         """
         Devuelve la lista de habilidades que un personaje ha aprendido,
         junto con su nivel_actual y exp_habilidad.
@@ -99,8 +99,8 @@ class Personaje:
                 print(f"❌ Error al obtener habilidades del personaje {id_personaje}: {e}")
         return habilidades_personaje
 
-    @staticmethod
-    def subir_nivel(get_db_connection, id_personaje):
+    @classmethod
+    def subir_nivel(cls, get_db_connection, id_personaje):
         """
         Sube de nivel a un personaje si tiene experiencia suficiente.
 
@@ -261,8 +261,8 @@ class Personaje:
                     "error": str(e)
                 }
 
-    @staticmethod
-    def subir_nivel_habilidad(get_db_connection, id_personaje, id_habilidad):
+    @classmethod
+    def subir_nivel_habilidad(cls, get_db_connection, id_personaje, id_habilidad):
         """
         Sube de nivel una habilidad de un personaje.
 

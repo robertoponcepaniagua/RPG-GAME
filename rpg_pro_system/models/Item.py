@@ -13,8 +13,8 @@ class Item:
         self.dano_bonus = dano_bonus
         self.rareza = rareza
 
-    @staticmethod
-    def obtener_items(get_db_connection, tipo=None, rareza=None):
+    @classmethod
+    def obtener_items(cls, get_db_connection, tipo=None, rareza=None):
         items_data = []
 
         with get_db_connection() as conexion:

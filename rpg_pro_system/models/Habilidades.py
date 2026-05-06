@@ -9,8 +9,8 @@ class Habilidades:
         self.dano_base = dano_base
         self.id_clase = id_clase
 
-    @staticmethod
-    def obtener_habilidades(get_db_connection, clase_id=None):
+    @classmethod
+    def obtener_habilidades(cls, get_db_connection, clase_id=None):
         """
         Trae el catálogo de habilidades. Puede filtrarse por clase (Guerrero, Mago, etc.)
         """

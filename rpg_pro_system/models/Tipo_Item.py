@@ -3,7 +3,7 @@ class Tipo_Item:
         self.id = id
         self.nombre = nombre
 
-    @staticmethod
+    @classmethod
     def obtener_tipos(get_db_connection):
         """
         Recupera todos los tipos de items disponibles (Arma, Poción, etc.)

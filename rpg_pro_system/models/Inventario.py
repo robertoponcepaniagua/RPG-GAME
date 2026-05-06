@@ -7,8 +7,8 @@ class Inventario:
         self.cantidad = cantidad
         self.equipado = equipado
 
-    @staticmethod
-    def obtener_inventario(get_db_connection, personaje_id=None):
+    @classmethod
+    def obtener_inventario(cls, get_db_connection, personaje_id=None):
         """
         Recupera los registros de la tabla Inventarios.
         Si se pasa personaje_id, filtra solo los objetos de ese héroe.

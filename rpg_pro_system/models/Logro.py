@@ -6,8 +6,8 @@ class Logro:
         self.icono = icono
         self.condicion = condicion
 
-    @staticmethod
-    def obtener_logros(get_db_connection):
+    @classmethod
+    def obtener_logros(cls, get_db_connection):
         """
         Recupera el listado completo de logros disponibles en el sistema.
         """

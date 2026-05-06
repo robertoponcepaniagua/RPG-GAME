@@ -11,7 +11,7 @@ class Personaje_Logro:
         self.id_logro = id_logro
         self.desbloqueado_en = desbloqueado_en
 
-    @staticmethod
+    @classmethod
     def obtener_logros_desbloqueados(get_db_connection, personaje_id):
         """
         Obtiene la lista de logros que un personaje específico ha conseguido.

@@ -285,6 +285,15 @@ def api_subir_habilidad():
     resultado = Personaje.subir_nivel_habilidad(get_db_connection, id_personaje, id_habilidad)
     return jsonify(resultado)
 
+@app.route('/api/inventario/add/<int:id_personaje>/<int:id_item>', methods=['GET','POST'])
+def api_add_item_inventario(id_personaje, id_item):
+    resultado = Inventario.add_objeto(id_personaje,id_item)
+    if resultado["ok"]:
+        return jsonify(resultado), 200
+    else:
+        return jsonify(resultado), 400
+
+
 # --- TEST DE CONEXIÓN ---
 @socketio.on('connect')
 def test_db_connection():

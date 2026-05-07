@@ -1,3 +1,4 @@
+from multiprocessing.forkserver import connect_to_new_process
 from os import access
 
 import flask
@@ -75,6 +76,47 @@ class Inventario:
                 print(f"❌ Error al consultar inventario: {e}")
 
         return inventarios_data
+
+    @classmethod
+    def add_objeto(cls, id_personaje, id_item):
+        """
+        METODO PARA AGREGAR UN OBJETO AL INVENTARIO DE UN PERSONAJE.
+        SI YA EXISTE, SOLO AUMENTA LA CANTIDAD.
+        SI NO EXISTE, CREA UN NUEVO REGISTRO.
+        """
+        try:
+            with get_db_connection() as conexion:
+                if conexion is None:
+                    return {
+                        "ok": False,
+                        "mensaje": "No se pudo conectar con la base de datos."
+                    }
+
+                with conexion.cursor() as cursor:
+                    query_update = """
+                    UPDATE Inventarios SET cantidad = cantidad + 1 WHERE id_personaje = %s AND id_item = %s
+                    """
+                    cursor.execute(query_update, (id_personaje, id_item))
+
+                    if cursor.rowcount == 0:
+                        query_insert = """
+                        INSERT into Inventarios (id_personaje, id_item, cantidad) VALUES (%s, %s, 1)
+                        """
+                        cursor.execute(query_insert, (id_personaje, id_item))
+
+                    conexion.commit()
+                    print(f"Objeto {id_item} agregado al inventario de {id_personaje}.")
+                    return {
+                        "ok": True,
+                        "mensaje": f"Objeto {id_item} agregado al inventario de {id_personaje}."
+                    }
+
+        except Exception as e:
+            print(f"Error al agregar objeto al inventario: {e}")
+            return {
+                "ok": False,
+                "mensaje": f"Error al agregar objeto al inventario: {e}"
+            }
 
     def toggle_equipar_desequipar(self):
         """

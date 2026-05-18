@@ -186,3 +186,76 @@ class Personaje:
             except Exception as e:
                 conexion.rollback()
                 return {"ok": False, "mensaje": str(e)}
+
+    def actualizar_estadisticas(self):
+        """
+        Recalcula las estadísticas del personaje (Vida, Maná y Atributos)
+        sumando los modificadores de TODOS los ítems que tiene equipados.
+        """
+        with get_db_connection() as conexion:
+            if conexion is None:
+                return {"ok": False, "mensaje": "Error de conexión"}
+
+            try:
+                with conexion.cursor() as cursor:
+                    # 1. Traemos los datos BASE actuales del personaje desde la BD
+                    # para evitar el bug de acumulación infinita.
+                    cursor.execute("""
+                                   SELECT vida_max, mana_max, fuerza, agilidad, inteligencia
+                                   FROM Personajes
+                                   WHERE id = %s
+                                   """, (self.id,))
+
+                    datos_base = cursor.fetchone()
+                    if not datos_base:
+                        return {"ok": False, "mensaje": "Personaje no encontrado"}
+
+                    v_max_base, m_max_base, fue_base, agi_base, int_base = datos_base
+
+                    # 2. Consultamos la SUMA de los modificadores de los ítems equipados.
+                    # Usamos COALESCE para que si no hay nada equipado devuelva 0 en vez de NULL.
+                    cursor.execute("""
+                                   SELECT COALESCE(SUM(i.mod_vida), 0),
+                                          COALESCE(SUM(i.mod_mana), 0),
+                                          COALESCE(SUM(i.mod_fuerza), 0),
+                                          COALESCE(SUM(i.mod_agilidad), 0),
+                                          COALESCE(SUM(i.mod_inteligencia), 0)
+                                   FROM Inventarios inv
+                                            JOIN Items i ON inv.id_item = i.id
+                                   WHERE inv.id_personaje = %s
+                                     AND inv.equipado = TRUE
+                                   """, (self.id,))
+
+                    mod_vida, mod_mana, mod_fue, mod_agi, mod_int = cursor.fetchone()
+
+                    # 3. Aplicamos los cambios al objeto en memoria (self)
+                    self.fuerza = fue_base + mod_fue
+                    self.agilidad = agi_base + mod_agi
+                    self.inteligencia = int_base + mod_int
+
+                    # Las estadísticas máximas aumentan con los ítems
+                    self.vida_max = v_max_base + mod_vida
+                    self.mana_max = m_max_base + mod_mana
+
+                    # 4. CONTROL DE INTEGRIDAD: Evitar que la vida/maná actual superen los nuevos máximos
+                    if self.vida_actual > self.vida_max:
+                        self.vida_actual = self.vida_max
+                    if self.mana_actual > self.mana_max:
+                        self.mana_actual = self.mana_max
+
+                    # 5. Guardamos de forma persistente los límites máximos calculados y la vida actual
+                    cursor.execute("""
+                                   UPDATE Personajes
+                                   SET vida_max    = %s,
+                                       vida_actual = %s,
+                                       mana_max    = %s,
+                                       mana_actual = %s
+                                   WHERE id = %s
+                                   """, (self.vida_max, self.vida_actual, self.mana_max, self.mana_actual, self.id))
+
+                    conexion.commit()
+                    return {"ok": True, "mensaje": "Estadísticas actualizadas con el equipamiento."}
+
+            except Exception as e:
+                conexion.rollback()
+                return {"ok": False, "mensaje": f"Error al actualizar estadísticas: {e}"}

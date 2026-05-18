@@ -1017,3 +1017,395 @@ select option { background: #0d1018; color: var(--text); }
     from { opacity: 0; transform: translateX(-5px); }
     to { opacity: 1; transform: translateX(0); }
 }
+
+/* ============================================================
+   SISTEMA DE HUD RPG — HOJA DE ESTADÍSTICAS AVANZADA (CSS LIMPIO)
+   ============================================================ */
+
+.stats-hud-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0.5rem;
+    animation: fadeInHUD 0.3s ease-out forwards;
+}
+
+@keyframes fadeInHUD {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Caja contenedora de las barras de recursos */
+.rpg-hud-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    padding: 1.2rem;
+    background: rgba(5, 6, 10, 0.6);
+    border-radius: 8px;
+    border: 1px solid rgba(212, 162, 76, 0.12); /* Oro sutil a juego con var(--gold) */
+}
+
+.hud-bar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.hud-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #a0aabf;
+    letter-spacing: 1px;
+}
+
+.hud-bar-label strong {
+    color: #ffffff;
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+}
+
+/* Fondo oscuro de las barras (Zócalo interior) */
+.hud-bar-bg {
+    width: 100%;
+    height: 16px;
+    background: #020305;
+    border-radius: 4px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Relleno con color dinámico manejado por JS con animaciones fluidas */
+.hud-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%; /* JS se encarga de estirarla */
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    box-shadow: inset 0 -4px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Reflejo brillante superior de cristalera RPG */
+.hud-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 50%;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Barra de Vida — Degradado de Rojo Fuego a Carmesí */
+.hp-fill {
+    background: linear-gradient(90deg, #b31010, #e74c3c);
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.35);
+}
+
+/* Barra de Recurso Mágico — Degradado Azul Eléctrico */
+.mp-fill {
+    background: linear-gradient(90deg, #1f618d, #3498db);
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.35);
+}
+
+/* Cuadrícula Premium para las 3 estadísticas base */
+.attributes-premium-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+}
+
+.attr-card {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.attr-card:hover {
+    transform: translateY(-2px);
+    background: rgba(212, 162, 76, 0.03);
+    border-color: rgba(212, 162, 76, 0.3);
+}
+
+.attr-icon {
+    font-size: 1.3rem;
+}
+
+.attr-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.attr-title {
+    font-size: 0.7rem;
+    color: #626e85;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-family: 'Rajdhani', sans-serif;
+}
+
+.attr-value {
+    font-size: 1.15rem;
+    color: var(--gold);
+    font-weight: 700;
+}
+
+/* ============================================================
+   REDISEÑO PREMIUM DE TARJETAS DE AVENTUREROS (CUADRÍCULA IZQ)
+   ============================================================ */
+
+.card-personaje {
+    display: flex !important; /* Forzamos disposición horizontal de elementos */
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(15, 18, 28, 0.6) !important; /* Fondo oscuro RPG acristalado */
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 8px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Efecto Hover: Brillo dorado sutil al pasar el cursor */
+.card-personaje:hover {
+    transform: translateY(-2px);
+    background: rgba(22, 27, 41, 0.8) !important;
+    border-color: rgba(212, 162, 76, 0.4) !important;
+    box-shadow: 0 4px 15px rgba(212, 162, 76, 0.1);
+}
+
+/* 🎯 CLASE EXACTA DE TU JS: Estado cuando el personaje está seleccionado */
+.card-personaje.selected {
+    border-color: #d4a24c !important; /* Oro de la interfaz */
+    background: rgba(212, 162, 76, 0.05) !important;
+    box-shadow: inset 0 0 10px rgba(212, 162, 76, 0.1), 0 4px 20px rgba(212, 162, 76, 0.15) !important;
+}
+
+/* ─── CARD BASE ─── */
+.card-personaje {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    background: linear-gradient(135deg, #12151c 0%, #0e1118 60%, #0a0d13 100%);
+    border: 1px solid rgba(212, 162, 76, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    overflow: hidden;
+    transition:
+        transform 0.3s cubic-bezier(.34, 1.56, .64, 1),
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
+
+    /* Animación de entrada */
+    opacity: 0;
+    transform: translateY(12px);
+    animation: cardIn 0.45s forwards ease-out;
+}
+
+@keyframes cardIn {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stagger si los renderizas en lista */
+.card-personaje:nth-child(1) { animation-delay: 0.05s; }
+.card-personaje:nth-child(2) { animation-delay: 0.12s; }
+.card-personaje:nth-child(3) { animation-delay: 0.19s; }
+.card-personaje:nth-child(4) { animation-delay: 0.26s; }
+.card-personaje:nth-child(5) { animation-delay: 0.33s; }
+
+.card-personaje:hover {
+    transform: translateY(-3px) scale(1.012);
+    border-color: rgba(212, 162, 76, 0.4);
+    box-shadow:
+        0 8px 28px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(212, 162, 76, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Scan shimmer en hover */
+.card-personaje::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 30%,
+        rgba(212, 162, 76, 0.05) 50%,
+        transparent 70%
+    );
+    transform: translateX(-120%);
+    pointer-events: none;
+    border-radius: inherit;
+}
+.card-personaje:hover::before {
+    transform: translateX(120%);
+    transition: transform 0.55s ease;
+}
+
+/* Bracket decorativo en esquina */
+.card-personaje::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 36px; height: 36px;
+    border-top: 1px solid rgba(212, 162, 76, 0.2);
+    border-right: 1px solid rgba(212, 162, 76, 0.2);
+    border-radius: 0 12px 0 0;
+    pointer-events: none;
+    transition: width 0.3s ease, height 0.3s ease, border-color 0.3s ease;
+}
+.card-personaje:hover::after {
+    width: 48px; height: 48px;
+    border-color: rgba(212, 162, 76, 0.45);
+}
+
+/* ─── AVATAR ─── */
+.card-avatar-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.card-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: radial-gradient(circle at 35% 35%, #1e2430, #0d1018);
+    border: 1px solid rgba(212, 162, 76, 0.18);
+    box-shadow:
+        inset 0 2px 6px rgba(0, 0, 0, 0.7),
+        0 0 0 4px rgba(212, 162, 76, 0.03);
+    transition:
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
+}
+.card-personaje:hover .card-avatar {
+    border-color: rgba(212, 162, 76, 0.45);
+    box-shadow:
+        inset 0 2px 6px rgba(0, 0, 0, 0.7),
+        0 0 14px rgba(212, 162, 76, 0.15),
+        0 0 0 5px rgba(212, 162, 76, 0.06);
+}
+
+.card-level-badge {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #d4a24c;
+    background: rgba(212, 162, 76, 0.08);
+    border: 1px solid rgba(212, 162, 76, 0.18);
+    padding: 0.1rem 0.45rem;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+.card-personaje:hover .card-level-badge {
+    background: rgba(212, 162, 76, 0.14);
+    border-color: rgba(212, 162, 76, 0.38);
+}
+
+/* ─── BODY ─── */
+.card-body-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.card-hero-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #eee8dc;
+    margin: 0 0 0.2rem 0;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.2s ease;
+}
+.card-personaje:hover .card-hero-name { color: #ffffff; }
+
+.card-hero-class {
+    font-size: 0.7rem;
+    color: #3e4a5c;
+    text-transform: uppercase;
+    margin: 0 0 0.55rem 0;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    transition: color 0.2s ease;
+}
+.card-personaje:hover .card-hero-class { color: #4e5e75; }
+
+.card-level-txt {
+    color: rgba(212, 162, 76, 0.55);
+}
+
+/* ─── MINI HUD ─── */
+.card-mini-hud {
+    display: flex;
+    flex-direction: column;
+    gap: 0.32rem;
+}
+
+.mini-bar-bg {
+    width: 100%;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.025);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.mini-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    position: relative;
+    transition: width 0.8s cubic-bezier(.22, .68, 0, 1.2);
+}
+
+/* Punto de brillo al final de la barra */
+.mini-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 5px; height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    filter: blur(1px);
+}
+
+.card-hp {
+    background: linear-gradient(90deg, #7d1a1a, #c0392b, #e74c3c);
+    box-shadow: 0 0 6px rgba(231, 76, 60, 0.35);
+}
+
+/* ─── META ROW ─── */
+.card-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #3a4455;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    letter-spacing: 0.3px;
+    transition: color 0.2s ease;
+}
+.card-personaje:hover .card-meta-row { color: #596273; }

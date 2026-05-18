@@ -179,6 +179,86 @@ if (btnIrCombate) {
    ========================================================================== */
 
 /**
+ * Realiza una petición asíncrona al backend de Flask para obtener las estadísticas
+ * finales calculadas y balanceadas de la base de datos de PostgreSQL.
+ * @param {number|string} idPersonaje - ID del personaje a consultar.
+ */
+function cargarPanelEstadisticas(idPersonaje) {
+    fetch(`/api/personajes/${idPersonaje}/estadisticas`)
+        .then(response => {
+            if (!response.ok) throw new Error("No se pudieron obtener las estadísticas.");
+            return response.json();
+        })
+        .then(data => {
+            if (!data) return;
+
+            // 1. Sincronizar textos del HUD superior clásico y la tarjeta pequeña
+            if (selectedHealth) selectedHealth.innerText = `Vida: ${data.vida_actual}/${data.vida_max}`;
+            if (hudHp) hudHp.innerText = `${data.vida_actual}/${data.vida_max}`;
+
+            // Actualización de referencias en la memoria global por seguridad
+            if (personajeActivo) {
+                personajeActivo.vida_actual = data.vida_actual;
+                personajeActivo.vida_max = data.vida_max;
+                personajeActivo.fuerza = data.fuerza;
+                personajeActivo.agilidad = data.agilidad;
+                personajeActivo.inteligencia = data.inteligencia;
+            }
+
+            // =========================================================
+            // 🎯 CONTROL DE VISIBILIDAD DE PANELES SEPARADOS
+            // =========================================================
+            const emptyState = document.getElementById('stats-empty-state');
+            const hudWrapper = document.getElementById('stats-hud-wrapper');
+
+            if (emptyState) emptyState.classList.add('hidden');
+            if (hudWrapper) hudWrapper.classList.remove('hidden');
+
+            // =========================================================
+            // 📊 SINCRONIZACIÓN DE BARRAS DE ESTADO DINÁMICAS
+            // =========================================================
+            // Rellenar barra de Vida Real recalculada
+            const hpText = document.getElementById('real-hp-text');
+            const hpFill = document.getElementById('real-hp-fill');
+            if (hpText) hpText.innerText = `${data.vida_actual} / ${data.vida_max}`;
+            if (hpFill) {
+                const pctHp = (data.vida_actual / data.vida_max) * 100;
+                hpFill.style.width = `${pctHp}%`;
+            }
+
+            // Rellenar recurso dinámico (Maná, Ira, Energía...) según devuelva Python
+            const resourceName = document.getElementById('real-resource-name');
+            const mpText = document.getElementById('real-mp-text');
+            const mpFill = document.getElementById('real-mp-fill');
+
+            const tipoRecurso = data.recurso_primario || 'Maná';
+            if (resourceName) resourceName.innerText = `✨ ${tipoRecurso.toUpperCase()}`;
+            if (mpText) mpText.innerText = `${data.mana_actual} / ${data.mana_max}`;
+            if (mpFill) {
+                const pctMana = data.mana_max > 0 ? (data.mana_actual / data.mana_max) * 100 : 0;
+                mpFill.style.width = `${pctMana}%`;
+            }
+
+            // =========================================================
+            // ⚔️ SINCRONIZACIÓN DE HOJA DE ATRIBUTOS
+            // =========================================================
+            const txtFuerza = document.getElementById('stat-fuerza');
+            const txtAgilidad = document.getElementById('stat-agilidad');
+            const txtInteligencia = document.getElementById('stat-inteligencia');
+
+            if (txtFuerza) txtFuerza.innerText = data.fuerza ?? 10;
+            if (txtAgilidad) txtAgilidad.innerText = data.agilidad ?? 10;
+            if (txtInteligencia) txtInteligencia.innerText = data.inteligencia ?? 10;
+
+            if (typeof escribirLog === 'function') {
+                escribirLog(`Atributos reales y barras HUD sincronizadas.`);
+            }
+        })
+        .catch(error => console.error("❌ Error en estadísticas:", error));
+}
+
+
+/**
  * Rellena de forma dinámica el menú desplegable <select> con las opciones de personajes del usuario.
  * @param {Array} lista - Array conteniendo los objetos de cada personaje.
  */
@@ -200,13 +280,13 @@ function llenarMenuPersonajes(lista) {
  * @param {number|string} idPersonaje - Identificador único del personaje a seleccionar.
  */
 function seleccionarPersonaje(idPersonaje) {
-    // Busca el objeto del personaje en la memoria caché local comparando los tipos como Strings seguros
+    // Busca el objeto del personaje en la memoria cache local
     const personaje = personajesActuales.find(p => String(p.id) === String(idPersonaje));
 
     // Desmarca visualmente cualquier tarjeta de personaje seleccionada previamente
     document.querySelectorAll('.card-personaje').forEach(card => card.classList.remove('selected'));
 
-    // CLÁUSULA DE SALVAGUARDA: Si se deselecciona o no se encuentra el héroe, limpia el DOM y bloquea el avance
+    // CLÁUSULA DE SALVAGUARDA
     if (!personaje) {
         if (personajeSeleccionado) personajeSeleccionado.classList.add('hidden');
         if (heroHud) heroHud.classList.add('hidden');
@@ -214,6 +294,16 @@ function seleccionarPersonaje(idPersonaje) {
         if (inventoryGrid) inventoryGrid.innerHTML = `<div class="empty-state"><span>🎒</span><p>Mochila vacía.</p></div>`;
         if (badgeOro) badgeOro.innerText = `💰 0 oro`;
         if (badgeItems) badgeItems.innerText = `0 objetos`;
+
+        const contenedorStats = document.getElementById('stats-detail-container');
+        if (contenedorStats) {
+            contenedorStats.innerHTML = `
+                <div class="empty-state">
+                    <span aria-hidden="true">📊</span>
+                    <p>Selecciona un aventurero para calcular su daño, maná y estadísticas de combate.</p>
+                </div>`;
+        }
+
         personajeActivo = null;
         escribirLog("Ningún personaje seleccionado.");
         return;
@@ -222,13 +312,11 @@ function seleccionarPersonaje(idPersonaje) {
     // Guarda la referencia del personaje activo de forma global
     personajeActivo = personaje;
 
-    // Remarca visualmente la tarjeta de personaje que corresponde al ID seleccionado
+    // Remarca visualmente la tarjeta de personaje
     const card = document.querySelector(`[data-personaje-id="${personaje.id}"]`);
     if (card) card.classList.add('selected');
 
-    // Desestructuración manual de datos y cálculos base de vida
-    const vida = personaje.vida_actual ?? 0;
-    const vidaMax = getVidaMax(personaje);
+    // Desestructuración manual de datos iniciales
     const inicial = (personaje.nombre || "?").charAt(0).toUpperCase();
     const claseNombre = NOMBRES_CLASES[personaje.id_clase] || 'Aventurero';
 
@@ -237,7 +325,6 @@ function seleccionarPersonaje(idPersonaje) {
     if (selectedName) selectedName.innerText = personaje.nombre || "Aventurero";
     if (selectedLevel) selectedLevel.innerText = `Nivel: ${personaje.nivel ?? 1}`;
     if (selectedGold) selectedGold.innerText = `Oro: ${personaje.oro ?? 0}`;
-    if (selectedHealth) selectedHealth.innerText = `Vida: ${vida}/${vidaMax}`;
     if (selectedClass) selectedClass.innerText = `Clase: ${claseNombre}`;
     if (personajeSeleccionado) personajeSeleccionado.classList.remove('hidden');
 
@@ -246,15 +333,21 @@ function seleccionarPersonaje(idPersonaje) {
     if (hudName) hudName.innerText = personaje.nombre || "Aventurero";
     if (hudLevel) hudLevel.innerText = personaje.nivel ?? 1;
     if (hudGold) hudGold.innerText = personaje.oro ?? 0;
-    if (hudHp) hudHp.innerText = `${vida}/${vidaMax}`;
     if (heroHud) heroHud.classList.remove('hidden');
 
-    // Carga de módulos dependientes (Llamadas asíncronas secundarias)
+    // ⏳ MODIFICACIÓN: Ponemos un estado de carga temporal en lo que responde el servidor
+    if (selectedHealth) selectedHealth.innerText = `Vida: ...`;
+    if (hudHp) hudHp.innerText = `...`;
+
+    // Carga de módulos dependientes
     cargarHabilidades(personaje.id_clase, claseNombre);
     cargarInventario(personaje.id);
 
-    if (badgeOro) badgeOro.innerText = `💰 ${personaje.oro ?? 0} oro`;
+    // 🚀 ¡PETICIÓN PRINCIPAL! Calculamos estadísticas reales desde el Backend
+    cargarPanelEstadisticas(personaje.id);
 
+
+    if (badgeOro) badgeOro.innerText = `💰 ${personaje.oro ?? 0} oro`;
     escribirLog(`Personaje seleccionado: ${personaje.nombre}.`);
 }
 
@@ -953,27 +1046,17 @@ socket.on('personajes', (lista) => {
     // Construcción limpia y de alto rendimiento mediante acumulación en memoria en un string único
     let htmlCards = "";
     lista.forEach((p) => {
-        const vida = Number(p.vida_actual || 0);
-        const vidaMax = getVidaMax(p);
-        const porcentaje = Math.max(0, Math.min(100, (vida / vidaMax) * 100)); // Limita de forma segura entre 0% y 100%
         const claseNombre = NOMBRES_CLASES[p.id_clase] || 'Aventurero';
 
         htmlCards += `
             <div class="card-personaje" data-personaje-id="${p.id}">
-                <div class="card-top">
-                    <div class="avatar">${(p.nombre || "?").charAt(0).toUpperCase()}</div>
-                    <div>
-                        <h3>${p.nombre || "Aventurero"}</h3>
-                        <p>${claseNombre}</p>
-                    </div>
+                <div class="card-avatar-wrapper">
+                    <div class="card-avatar">${claseNombre === 'Mago' ? '🧙' : '⚔️'}</div>
                 </div>
-                <div class="stats-grid">
-                    <div><span>Nivel</span><strong>${p.nivel ?? 1}</strong></div>
-                    <div><span>Oro</span><strong>${p.oro ?? 0}</strong></div>
-                </div>
-                <div class="health-block">
-                    <div class="health-info"><span>Vida</span><strong>${vida}/${vidaMax}</strong></div>
-                    <div class="health-bar"><div style="width: ${porcentaje}%"></div></div>
+                
+                <div class="card-body-wrapper">
+                    <h3 class="card-hero-name">${p.nombre || "Aventurero"}</h3>
+                    <p class="card-hero-class">${claseNombre} · <span class="card-level-txt">Lv.${p.nivel ?? 1}</span></p>
                 </div>
             </div>
         `;

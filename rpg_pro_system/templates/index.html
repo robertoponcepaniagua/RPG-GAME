@@ -144,21 +144,71 @@
 
             <!-- TAB: ESTADÍSTICAS Y DAÑO DETALLADO -->
             <article class="tab-content" id="tab-estadisticas" role="tabpanel" aria-labelledby="tab-estadisticas">
-                <div class="panel-header">
-                    <div>
-                        <p class="eyebrow">Hoja de Personaje</p>
-                        <h2>Atributos y Poder de Combate</h2>
+    <div class="panel-header">
+        <div>
+            <p class="eyebrow">Hoja de Personaje</p>
+            <h2>Atributos y Poder de Combate</h2>
+        </div>
+        <span id="badge-clase-stats" class="panel-badge">Valores Reales</span>
+    </div>
+
+    <div id="stats-detail-container" class="stats-container-layout">
+
+        <div id="stats-empty-state" class="empty-state">
+            <span aria-hidden="true">📊</span>
+            <p>Selecciona un aventurero para calcular su daño, maná y estadísticas de combate.</p>
+        </div>
+
+        <div id="stats-hud-wrapper" class="stats-hud-wrapper hidden">
+            <div class="rpg-hud-bars">
+                <div class="hud-bar-group">
+                    <div class="hud-bar-label">
+                        <span>❤️ SALUD</span>
+                        <strong id="real-hp-text">0 / 0</strong>
                     </div>
-                    <span id="badge-clase-stats" class="panel-badge">Valores Reales</span>
+                    <div class="hud-bar-bg hp-bg">
+                        <div id="real-hp-fill" class="hud-bar-fill hp-fill" style="width: 0%"></div>
+                    </div>
                 </div>
 
-                <div id="stats-detail-container" class="stats-container-layout">
-                    <div class="empty-state">
-                        <span aria-hidden="true">📊</span>
-                        <p>Selecciona un aventurero para calcular su daño, maná y estadísticas de combate.</p>
+                <div class="hud-bar-group">
+                    <div class="hud-bar-label">
+                        <span id="real-resource-name">✨ MANÁ</span>
+                        <strong id="real-mp-text">0 / 0</strong>
+                    </div>
+                    <div class="hud-bar-bg mp-bg">
+                        <div id="real-mp-fill" class="hud-bar-fill mp-fill" style="width: 0%"></div>
                     </div>
                 </div>
-            </article>
+            </div>
+
+            <div class="attributes-premium-grid">
+                <div class="attr-card str">
+                    <span class="attr-icon">⚔️</span>
+                    <div class="attr-info">
+                        <span class="attr-title">Fuerza</span>
+                        <strong id="stat-fuerza" class="attr-value">-</strong>
+                    </div>
+                </div>
+                <div class="attr-card agi">
+                    <span class="attr-icon">🏹</span>
+                    <div class="attr-info">
+                        <span class="attr-title">Agilidad</span>
+                        <strong id="stat-agilidad" class="attr-value">-</strong>
+                    </div>
+                </div>
+                <div class="attr-card int">
+                    <span class="attr-icon">🧠</span>
+                    <div class="attr-info">
+                        <span class="attr-title">Inteligencia</span>
+                        <strong id="stat-inteligencia" class="attr-value">-</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</article>
 
             <!-- TAB: TIENDA -->
             <article class="tab-content" id="tab-tienda" role="tabpanel" aria-labelledby="tab-tienda">

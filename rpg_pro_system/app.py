@@ -266,6 +266,23 @@ def api_subir_nivel():
     return jsonify(resultado)
 
 
+@app.route('/api/personajes/<int:id_personaje>/estadisticas', methods=['GET'])
+def api_estadisticas_personaje(id_personaje):
+    """
+    Endpoint REST que devuelve los cálculos de daño y recursos de un aventurero.
+    """
+    # LLamamos al método del modelo que acabamos de crear
+    stats = Personaje.obtener_estadisticas_personaje(id_personaje, get_db_connection)
+
+    if not stats:
+        return jsonify({
+            "ok": False,
+            "mensaje": "Personaje no encontrado o error en los cálculos."
+        }), 404
+
+    # Devolvemos los datos estructurados en formato JSON con estado HTTP 200 (OK)
+    return jsonify(stats), 200
+
 @app.route('/api/personajes/arbol-habilidades')
 def get_arbol_habilidades():
     # Recogemos las variables que mandaremos desde JavaScript

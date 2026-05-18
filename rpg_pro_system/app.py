@@ -63,10 +63,6 @@ def get_db_connection():
 def index():
     return render_template('index.html')
 
-# --- RUTA CSS ---
-@app.route('/style.css')
-def styles():
-    return send_from_directory('templates', 'style.css')
 # --- RUTA DE DATOS (API JSON) ---
 @app.route('/api/personajes')
 def api_personajes():
@@ -257,14 +253,33 @@ def api_habilidades():
 
 
 # Ruta para subir nivel de personaje
-@app.route('/api/personaje/subir-nivel/int ', methods=['POST'])
+@app.route('/api/personaje/subir-nivel', methods=['POST'])  # 💡 URL limpia sin parámetros
 def api_subir_nivel():
-    data = request.json
+    data = request.get_json()  # 💡 get_json() es más seguro
+    if not data:
+        return jsonify({"ok": False, "mensaje": "No se recibieron datos"}), 400
+
     id_personaje = data.get('id_personaje')
 
-    # Invocamos tu método estático
+    # Invocamos tu método pasándole la conexión
     resultado = Personaje.subir_nivel(get_db_connection, id_personaje)
     return jsonify(resultado)
+
+
+@app.route('/api/personajes/arbol-habilidades')
+def get_arbol_habilidades():
+    # Recogemos las variables que mandaremos desde JavaScript
+    clase_id = request.args.get('clase_id')
+    personaje_id = request.args.get('personaje_id')
+
+    # Validación por seguridad
+    if not clase_id or not personaje_id:
+        return jsonify({"error": "Faltan parámetros: clase_id y personaje_id son obligatorios"}), 400
+
+    # Llamamos a tu nuevo método de la clase Habilidades
+    habilidades = Habilidades.obtener_arbol_habilidades(get_db_connection, clase_id, personaje_id)
+
+    return jsonify(habilidades)
 
 @app.route('/api/personaje/recompensa/<int:id_personaje>/<int:id_enemigo>', methods=['GET', 'POST'])
 def api_recompensa(id_personaje, id_enemigo):

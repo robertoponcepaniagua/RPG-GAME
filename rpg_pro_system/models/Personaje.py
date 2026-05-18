@@ -138,23 +138,40 @@ class Personaje:
     @classmethod
     def subir_nivel(cls, get_db_connection, id_personaje):
         """
-        Mantiene tu lógica de subir niveles múltiples si sobra EXP.
+        Sube de nivel al personaje si tiene suficiente EXP, incrementando sus estadísticas base.
+        Devuelve el objeto actualizado para que el JS renderice el HUD correctamente.
         """
         with get_db_connection() as conexion:
+            if conexion is None:
+                return {"ok": False, "mensaje": "Error de conexión con la base de datos"}
             try:
                 with conexion.cursor() as cursor:
-                    cursor.execute(
-                        "SELECT nombre, nivel, exp, vida_max, mana_max, fuerza, agilidad, inteligencia FROM Personajes WHERE id = %s",
-                        (id_personaje,))
+                    # 1. Recuperamos los atributos actuales
+                    cursor.execute("""
+                                   SELECT nombre,
+                                          nivel,
+                                          exp,
+                                          vida_max,
+                                          mana_max,
+                                          fuerza,
+                                          agilidad,
+                                          inteligencia
+                                   FROM Personajes
+                                   WHERE id = %s
+                                   """, (id_personaje,))
+
                     p = cursor.fetchone()
-                    if not p: return {"ok": False, "mensaje": "No existe el personaje"}
+                    if not p:
+                        return {"ok": False, "mensaje": "No existe el personaje"}
 
                     nombre, nivel, exp, v_max, m_max, fue, agi, intel = p
                     exp_necesaria = nivel * 1000
 
+                    # Guard Clause
                     if exp < exp_necesaria:
-                        return {"ok": False, "mensaje": "EXP insuficiente"}
+                        return {"ok": False, "mensaje": "EXP insuficiente para subir de nivel"}
 
+                    # 2. Bucle de subida de niveles múltiples
                     subidos = 0
                     while exp >= exp_necesaria:
                         exp -= exp_necesaria
@@ -167,6 +184,7 @@ class Personaje:
                         subidos += 1
                         exp_necesaria = nivel * 1000
 
+                    # 3. Guardamos los nuevos atributos base
                     cursor.execute("""
                                    UPDATE Personajes
                                    SET nivel=%s,
@@ -182,80 +200,98 @@ class Personaje:
                                    """, (nivel, exp, v_max, v_max, m_max, m_max, fue, agi, intel, id_personaje))
 
                     conexion.commit()
-                    return {"ok": True, "mensaje": f"¡Subiste {subidos} niveles!"}
+
+                    # 💡 TIP: Forzamos la actualización de equipamiento antes de responder al JS
+                    personaje_instancia = cls(
+                        id_personaje, nombre, nivel, exp, 0, v_max, v_max,
+                        m_max, m_max, fue, agi, intel, None, None
+                    )
+                    personaje_instancia.actualizar_estadisticas()
+
+                    # 4. CONSTRUIMOS LA RESPUESTA QUE BUSCA TU JS
+                    # Tu JS espera: datos.nivel_actual, datos.vida_max, datos.vida_actual,
+                    # datos.fuerza, datos.agilidad, datos.inteligencia, datos.exp_restante, datos.exp_para_siguiente_nivel
+                    return {
+                        "ok": True,
+                        "mensaje": f"¡Enhorabuena! {nombre} subió {subidos} nivel(es).",
+                        "personaje": {
+                            "nivel_actual": personaje_instancia.nivel,
+                            "vida_max": personaje_instancia.vida_max,
+                            "vida_actual": personaje_instancia.vida_actual,
+                            "fuerza": personaje_instancia.fuerza,
+                            "agilidad": personaje_instancia.agilidad,
+                            "inteligencia": personaje_instancia.inteligencia,
+                            "exp_restante": personaje_instancia.exp,
+                            "exp_para_siguiente_nivel": personaje_instancia.nivel * 1000
+                        }
+                    }
+
             except Exception as e:
                 conexion.rollback()
-                return {"ok": False, "mensaje": str(e)}
+                return {"ok": False, "mensaje": f"Error al subir de nivel: {str(e)}"}
 
-    def actualizar_estadisticas(self):
+    def actualizar_estadisticas(self, curar_al_maximo=False):
         """
-        Recalcula las estadísticas del personaje (Vida, Maná y Atributos)
-        sumando los modificadores de TODOS los ítems que tiene equipados.
+        Recalcula los atributos del personaje sumando el equipamiento activo.
+        Si curar_al_maximo es True, rellena las barras actuales a tope.
         """
         with get_db_connection() as conexion:
-            if conexion is None:
-                return {"ok": False, "mensaje": "Error de conexión"}
+            if conexion is None: return {"ok": False, "mensaje": "Error de conexión"}
 
             try:
                 with conexion.cursor() as cursor:
-                    # 1. Traemos los datos BASE actuales del personaje desde la BD
-                    # para evitar el bug de acumulación infinita.
+                    # 1. Traemos los datos BASE reales desde la BD
                     cursor.execute("""
-                                   SELECT vida_max, mana_max, fuerza, agilidad, inteligencia
-                                   FROM Personajes
-                                   WHERE id = %s
-                                   """, (self.id,))
+                        SELECT vida_max, mana_max, fuerza, agilidad, inteligencia
+                        FROM Personajes WHERE id = %s
+                    """, (self.id,))
 
                     datos_base = cursor.fetchone()
-                    if not datos_base:
-                        return {"ok": False, "mensaje": "Personaje no encontrado"}
+                    if not datos_base: return {"ok": False, "mensaje": "No encontrado"}
 
                     v_max_base, m_max_base, fue_base, agi_base, int_base = datos_base
 
-                    # 2. Consultamos la SUMA de los modificadores de los ítems equipados.
-                    # Usamos COALESCE para que si no hay nada equipado devuelva 0 en vez de NULL.
+                    # 2. Consultamos los modificadores de los ítems equipados
                     cursor.execute("""
-                                   SELECT COALESCE(SUM(i.mod_vida), 0),
-                                          COALESCE(SUM(i.mod_mana), 0),
-                                          COALESCE(SUM(i.mod_fuerza), 0),
-                                          COALESCE(SUM(i.mod_agilidad), 0),
-                                          COALESCE(SUM(i.mod_inteligencia), 0)
-                                   FROM Inventarios inv
-                                            JOIN Items i ON inv.id_item = i.id
-                                   WHERE inv.id_personaje = %s
-                                     AND inv.equipado = TRUE
-                                   """, (self.id,))
+                        SELECT COALESCE(SUM(i.mod_vida), 0),
+                               COALESCE(SUM(i.mod_mana), 0),
+                               COALESCE(SUM(i.mod_fuerza), 0),
+                               COALESCE(SUM(i.mod_agilidad), 0),
+                               COALESCE(SUM(i.mod_inteligencia), 0)
+                        FROM Inventarios inv
+                        JOIN Items i ON inv.id_item = i.id
+                        WHERE inv.id_personaje = %s AND inv.equipado = TRUE
+                    """, (self.id,))
 
                     mod_vida, mod_mana, mod_fue, mod_agi, mod_int = cursor.fetchone()
 
-                    # 3. Aplicamos los cambios al objeto en memoria (self)
+                    # 3. Sincronizamos el objeto en memoria con los bonus incluidos
                     self.fuerza = fue_base + mod_fue
                     self.agilidad = agi_base + mod_agi
                     self.inteligencia = int_base + mod_int
-
-                    # Las estadísticas máximas aumentan con los ítems
                     self.vida_max = v_max_base + mod_vida
                     self.mana_max = m_max_base + mod_mana
 
-                    # 4. CONTROL DE INTEGRIDAD: Evitar que la vida/maná actual superen los nuevos máximos
-                    if self.vida_actual > self.vida_max:
+                    # 4. 💡 CONTROL DE CURACIÓN TOTAL
+                    if curar_al_maximo:
+                        # Si viene de subir de nivel, lo curamos al 100% real (Base + Objetos)
                         self.vida_actual = self.vida_max
-                    if self.mana_actual > self.mana_max:
                         self.mana_actual = self.mana_max
+                    else:
+                        # Si es una actualización normal, respetamos el tope por seguridad
+                        if self.vida_actual > self.vida_max: self.vida_actual = self.vida_max
+                        if self.mana_actual > self.mana_max: self.mana_actual = self.mana_max
 
-                    # 5. Guardamos de forma persistente los límites máximos calculados y la vida actual
+                    # 5. Persistencia en PostgreSQL
                     cursor.execute("""
-                                   UPDATE Personajes
-                                   SET vida_max    = %s,
-                                       vida_actual = %s,
-                                       mana_max    = %s,
-                                       mana_actual = %s
-                                   WHERE id = %s
-                                   """, (self.vida_max, self.vida_actual, self.mana_max, self.mana_actual, self.id))
+                        UPDATE Personajes
+                        SET vida_max = %s, vida_actual = %s, mana_max = %s, mana_actual = %s
+                        WHERE id = %s
+                    """, (self.vida_max, self.vida_actual, self.mana_max, self.mana_actual, self.id))
 
                     conexion.commit()
-                    return {"ok": True, "mensaje": "Estadísticas actualizadas con el equipamiento."}
+                    return {"ok": True, "mensaje": "Estadísticas sincronizadas."}
 
             except Exception as e:
                 conexion.rollback()
-                return {"ok": False, "mensaje": f"Error al actualizar estadísticas: {e}"}
+                return {"ok": False, "mensaje": str(e)}

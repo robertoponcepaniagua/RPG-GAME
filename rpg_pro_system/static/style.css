@@ -1,8 +1,7 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 /* ============================================================
-   RPG PRO SYSTEM — STYLE COMPLETO v2
+   RPG PRO SYSTEM — STYLE COMPLETO v2.1 (Optimizado)
    ============================================================ */
 
 :root {
@@ -76,6 +75,7 @@ body::after {
 
 button, select, input { font-family: 'Rajdhani', sans-serif; }
 
+/* COMPONENTE: BOTONES INTERACTIVOS */
 button {
     position: relative;
     padding: 11px 18px;
@@ -102,37 +102,49 @@ button::before {
     transition: 0.45s ease;
 }
 
-button:hover {
+button:hover:not(:disabled) {
     color: #fff;
     border-color: var(--gold-light);
     transform: translateY(-2px);
     text-shadow: 0 0 8px rgba(245, 200, 105, 0.55);
     box-shadow: 0 0 18px rgba(245, 200, 105, 0.25), 0 12px 24px rgba(0, 0, 0, 0.45);
 }
-button:hover::before { left: 120%; }
-button:active { transform: translateY(0); }
+button:hover:not(:disabled)::before { left: 120%; }
+button:active:not(:disabled) { transform: translateY(0); }
+
+/* ESTADOS COMPARTIDOS: Bloqueos de Interfaz por Lógica RPG */
+button:disabled, .skill-maxed {
+    cursor: not-allowed !important;
+    opacity: 0.45;
+    filter: grayscale(0.8);
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: var(--text-muted) !important;
+    text-shadow: none !important;
+}
 
 button.btn-secondary {
     border-color: rgba(77, 163, 255, 0.55);
     color: var(--blue);
     background: linear-gradient(180deg, rgba(77, 163, 255, 0.14), rgba(0, 0, 0, 0.4));
 }
-button.btn-secondary:hover { color: #fff; box-shadow: 0 0 18px rgba(77, 163, 255, 0.35); }
+button.btn-secondary:hover:not(:disabled) { color: #fff; box-shadow: 0 0 18px rgba(77, 163, 255, 0.35); }
 
 button.btn-special {
     border-color: rgba(155, 89, 255, 0.6);
     color: #d4b8ff;
     background: linear-gradient(180deg, rgba(155, 89, 255, 0.18), rgba(0, 0, 0, 0.4));
 }
-button.btn-special:hover { color: #fff; box-shadow: 0 0 22px rgba(155, 89, 255, 0.4); }
+button.btn-special:hover:not(:disabled) { color: #fff; box-shadow: 0 0 22px rgba(155, 89, 255, 0.4); }
 
 button.btn-danger {
     border-color: rgba(231, 76, 60, 0.6);
     color: #ff9c8e;
     background: linear-gradient(180deg, rgba(231, 76, 60, 0.16), rgba(0, 0, 0, 0.4));
 }
-button.btn-danger:hover { color: #fff; box-shadow: 0 0 18px rgba(231, 76, 60, 0.4); }
+button.btn-danger:hover:not(:disabled) { color: #fff; box-shadow: 0 0 18px rgba(231, 76, 60, 0.4); }
 
+/* TIPOGRAFÍAS Y ENCABEZADOS */
 h1, h2, h3, h4 { font-family: 'Cinzel', serif; }
 h1 {
     color: var(--gold-light);
@@ -148,7 +160,6 @@ p { line-height: 1.6; }
 
 ::selection { background: rgba(245, 200, 105, 0.35); color: #fff; }
 
-/* FONDO DECORATIVO */
 .background-glow {
     position: fixed; left: 50%; bottom: 8%; z-index: 0;
     width: 520px; height: 520px;
@@ -157,7 +168,7 @@ p { line-height: 1.6; }
     filter: blur(22px); pointer-events: none;
 }
 
-/* LAYOUT */
+/* LAYOUT GENERAL */
 .game-header, .game-layout { position: relative; z-index: 1; }
 
 .game-header {
@@ -169,7 +180,6 @@ p { line-height: 1.6; }
 }
 
 .game-layout { width: min(1420px, calc(100% - 40px)); margin: 0 auto 54px; }
-
 .brand { display: flex; align-items: center; gap: 18px; }
 
 .brand-icon {
@@ -193,7 +203,7 @@ p { line-height: 1.6; }
 
 .header-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
 
-/* HUD del header */
+/* HUD PRINCIPAL */
 .hero-hud {
     display: flex; align-items: center; gap: 12px;
     padding: 8px 14px;
@@ -213,7 +223,7 @@ p { line-height: 1.6; }
 .hud-stats { display: flex; gap: 10px; font-size: 0.85rem; color: var(--text-soft); }
 .hud-stats b { color: #fff; }
 
-/* STATUS */
+/* PANEL DE ESTADO SERVIDOR / CONEXIÓN */
 #status-container {
     display: flex; align-items: center; gap: 10px;
     padding: 11px 18px;
@@ -241,7 +251,7 @@ p { line-height: 1.6; }
     to { transform: scale(2.4); opacity: 0; }
 }
 
-/* HERO PANEL */
+/* HERO CONTENEDOR */
 .hero-panel {
     min-height: 380px;
     display: grid; grid-template-columns: 1.35fr 0.65fr;
@@ -330,7 +340,7 @@ p { line-height: 1.6; }
 }
 .kingdom-stats strong { color: var(--gold-light); font-size: 1.2rem; }
 
-/* GRID GENERAL */
+/* INTERFAZ DE DASHBOARD COHESIVA */
 .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
 .bottom-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 24px; }
 
@@ -358,7 +368,7 @@ p { line-height: 1.6; }
     white-space: nowrap;
 }
 
-/* TABS */
+/* NAVEGACIÓN POR PESTAÑAS (TABS) */
 .tabs-panel {
     margin-top: 24px;
     padding: 0;
@@ -409,9 +419,9 @@ p { line-height: 1.6; }
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ÁRBOL DE HABILIDADES */
+/* SISTEMA: ÁRBOL DE HABILIDADES */
 .skill-tree {
-    display: flex; align-items: stretch; justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     gap: 18px; flex-wrap: wrap;
 }
 
@@ -429,7 +439,7 @@ p { line-height: 1.6; }
         14px 100%, 0 calc(100% - 14px), 0 14px);
 }
 
-.skill:hover {
+.skill:not(.skill-maxed):hover {
     transform: translateY(-6px);
     border-color: var(--gold-light);
     box-shadow: 0 0 28px rgba(212, 162, 76, 0.18);
@@ -452,13 +462,13 @@ p { line-height: 1.6; }
     margin-bottom: 14px;
     font-size: 0.8rem;
 }
-.skill-stats span {
+.skill-stats span, .stat-box {
     padding: 4px 8px;
     background: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--border-soft);
     color: var(--text-soft);
 }
-.skill-stats b { color: #fff; }
+.skill-stats b, .stat-box b { color: #fff; }
 
 .skill.pasiva  { border-color: rgba(77, 163, 255, 0.45); }
 .skill.activa  { border-color: rgba(46, 204, 113, 0.45); }
@@ -479,7 +489,7 @@ p { line-height: 1.6; }
     50%      { opacity: 1; transform: translateX(5px); }
 }
 
-/* SELECTOR DE PERSONAJES */
+/* SELECTORES Y CONFIGURACIÓN */
 .character-selector {
     margin-bottom: 18px; padding: 18px;
     background:
@@ -512,7 +522,7 @@ select:hover, select:focus {
 }
 select option { background: #0d1018; color: var(--text); }
 
-/* PERSONAJE SELECCIONADO */
+/* VISTA: PERSONAJE SELECCIONADO */
 .selected-character {
     margin-bottom: 18px; padding: 18px;
     display: flex; align-items: center; gap: 16px;
@@ -547,7 +557,7 @@ select option { background: #0d1018; color: var(--text); }
     font-weight: 700;
 }
 
-/* CARTAS DE PERSONAJES */
+/* CUADRÍCULA DE PERSONAJES */
 .personajes-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 18px;
@@ -628,7 +638,7 @@ select option { background: #0d1018; color: var(--text); }
     transition: width 0.4s ease;
 }
 
-/* TIENDA */
+/* SISTEMA DE TIENDA RPG */
 .shop-filters {
     display: flex; gap: 10px; flex-wrap: wrap;
     margin-bottom: 22px;
@@ -667,7 +677,7 @@ select option { background: #0d1018; color: var(--text); }
     display: flex; align-items: center; justify-content: space-between;
 }
 .shop-icon { font-size: 1.8rem; }
-.shop-rar {
+.shop-rar, .type-txt {
     padding: 3px 8px; font-size: 0.72rem;
     font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
     border: 1px solid currentColor;
@@ -695,20 +705,26 @@ select option { background: #0d1018; color: var(--text); }
 }
 .shop-price { color: var(--gold-light); font-weight: 800; font-size: 1.1rem; }
 
-/* Rarezas (tienda + inventario) */
-.rar-común, .rar-comun       { border-color: var(--rar-comun); }
-.rar-común .shop-rar, .rar-comun .shop-rar       { color: var(--rar-comun); }
-.rar-raro       { border-color: var(--rar-raro); }
-.rar-raro .shop-rar       { color: var(--rar-raro); }
-.rar-épico, .rar-epico       { border-color: var(--rar-epico); }
-.rar-épico .shop-rar, .rar-epico .shop-rar       { color: var(--rar-epico); }
+/* MANEJO DE RAREZAS (Tienda / Inventario) */
+.rar-comun, .rar-común { border-color: var(--rar-comun); }
+.rar-comun .shop-rar, .rar-común .shop-rar, .rar-comun .inv-rar { color: var(--rar-comun); }
+
+.rar-raro { border-color: var(--rar-raro); }
+.rar-raro .shop-rar, .rar-raro .inv-rar { color: var(--rar-raro); }
+
+.rar-epico, .rar-épico {
+    border-color: var(--rar-epico);
+    box-shadow: inset 0 0 10px rgba(155, 89, 255, 0.15);
+}
+.rar-epico .shop-rar, .rar-épico .shop-rar, .rar-epico .inv-rar { color: var(--rar-epico); }
+
 .rar-legendario {
     border-color: var(--rar-legendario);
-    box-shadow: 0 0 18px rgba(255, 157, 46, 0.18);
+    box-shadow: 0 0 18px rgba(255, 157, 46, 0.18), inset 0 0 12px rgba(255, 157, 46, 0.1);
 }
-.rar-legendario .shop-rar { color: var(--rar-legendario); }
+.rar-legendario .shop-rar, .rar-legendario .inv-rar { color: var(--rar-legendario); }
 
-/* COMBATE */
+/* SISTEMA DE COMBATE EXCLUSIVO */
 .combat-setup {
     display: flex; gap: 12px; flex-wrap: wrap;
     align-items: center;
@@ -808,7 +824,7 @@ select option { background: #0d1018; color: var(--text); }
 .combat-log p { margin-bottom: 4px; }
 .combat-log b { color: var(--gold-light); }
 
-/* INVENTARIO */
+/* INVENTARIO COMPACTO */
 .inventory-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 14px;
@@ -838,9 +854,9 @@ select option { background: #0d1018; color: var(--text); }
     background: rgba(46, 204, 113, 0.1);
     text-transform: uppercase; letter-spacing: 1px;
 }
-.inv-item.equipped { box-shadow: 0 0 16px rgba(46, 204, 113, 0.18); }
+.inv-item.equipped { border-color: var(--green); box-shadow: 0 0 16px rgba(46, 204, 113, 0.18); }
 
-/* LOG */
+/* ACCIONES DE LOGS CONSOLA */
 #log {
     margin-top: 16px; padding: 18px;
     min-height: 86px;
@@ -854,7 +870,7 @@ select option { background: #0d1018; color: var(--text); }
     font-size: 1rem; line-height: 1.6;
 }
 
-/* EMPTY STATE */
+/* EMPTY STATES CONTROL */
 .empty-state {
     grid-column: 1 / -1;
     min-height: 160px;
@@ -866,7 +882,7 @@ select option { background: #0d1018; color: var(--text); }
 }
 .empty-state span { display: block; margin-bottom: 10px; font-size: 2.2rem; }
 
-/* SCROLLBAR */
+/* PERSONALIZACIÓN DE SCROLLBAR */
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: #07080d; }
 ::-webkit-scrollbar-thumb {
@@ -877,15 +893,50 @@ select option { background: #0d1018; color: var(--text); }
     background: linear-gradient(180deg, var(--gold-light), var(--gold));
 }
 
-/* RESPONSIVE */
+/* NOTIFICACIONES DINÁMICAS (TOASTS) */
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 12px 20px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #fff;
+    z-index: 9999;
+    letter-spacing: 0.5px;
+    box-shadow: 0 10px 30px var(--shadow-strong);
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1), fadeOut 0.4s ease 2.6s forwards;
+    max-width: 320px;
+}
+.toast.error  { background: #1a0808; border: 1px solid #dc2626; border-left: 4px solid #dc2626; color: #ff9c8e; }
+.toast.ok     { background: #06140c; border: 1px solid #16a34a; border-left: 4px solid #16a34a; color: #7ef0a8; }
+.toast.warn   { background: #1a1205; border: 1px solid #d97706; border-left: 4px solid #d97706; color: #f5c869; }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; pointer-events: none; }
+}
+
+/* ============================================================
+   MEDIA QUERIES (RESPONSIVE ENGINE)
+   ============================================================ */
 @media (max-width: 980px) {
     .game-header { align-items: flex-start; flex-direction: column; }
     .header-right { width: 100%; justify-content: space-between; }
     .hero-panel, .bottom-grid { grid-template-columns: 1fr; }
-    .skill-arrow { width: 100%; transform: rotate(90deg); animation: none; }
+
+    /* Adaptación del árbol en móvil de horizontal a vertical */
+    .skill-tree { flex-direction: column; align-items: center; }
+    .skill-arrow { width: 100%; transform: rotate(90deg); animation: none; padding: 10px 0; }
+
     .hero-card { min-height: 320px; }
     .combat-arena { grid-template-columns: 1fr; }
-    .vs-mark { transform: rotate(0); }
+    .vs-mark { padding: 12px 0; }
 }
 
 @media (max-width: 720px) {
@@ -897,7 +948,7 @@ select option { background: #0d1018; color: var(--text); }
     .hero-content { padding: 28px 22px; }
     .hero-description { font-size: 1rem; }
     .panel, .tab-content { padding: 22px; }
-    .panel-header { flex-direction: column; }
+    .panel-header { flex-direction: column; align-items: flex-start; gap: 10px; }
     .skill { min-width: 100%; max-width: 100%; }
     .selected-character { align-items: flex-start; flex-direction: column; }
     .selected-avatar { width: 56px; height: 56px; }
@@ -911,31 +962,58 @@ select option { background: #0d1018; color: var(--text); }
     .selected-stats { flex-direction: column; }
     .selected-stats span { width: 100%; }
     .kingdom-stats { grid-template-columns: 1fr; }
+    .toast { left: 12px; right: 12px; max-width: none; bottom: 12px; }
 }
 
-.toast {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    padding: 0.75rem 1.25rem;
-    border-radius: 10px;
-    font-weight: 600;
+
+/* Remover la flecha nativa del navegador en Chrome/Safari y Firefox */
+.panel-desplegable summary {
+    list-style: none;
+    cursor: pointer;
+    outline: none;
+}
+.panel-desplegable summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Estructura de la cabecera interactiva */
+.summary-content {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Icono indicador de despliegue */
+.toggle-icon {
+    display: inline-block;
+    font-size: 0.9rem;
+    color: var(--gold);
+    margin-left: 10px;
+    transition: transform var(--transition);
+}
+
+/* Rotar el icono cuando el panel esté abierto */
+.panel-desplegable[open] .toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* Optimización del contenedor del LOG para múltiples mensajes */
+#log {
+    max-height: 150px;    /* O la altura que mejor te cuadre en tu diseño */
+    overflow-y: auto;     /* Activa la barra de scroll vertical cuando se llene */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Estilo para cada línea de mensaje individual */
+.log-entry {
+    margin: 0;
     font-size: 0.95rem;
-    color: #fff;
-    z-index: 9999;
-    animation: slideIn 0.3s ease, fadeOut 0.4s ease 2.6s forwards;
-    max-width: 320px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    color: var(--text-soft);
+    animation: logFadeIn 0.25s ease;
 }
-.toast.error  { background: #dc2626; border-left: 4px solid #991b1b; }
-.toast.ok     { background: #16a34a; border-left: 4px solid #14532d; }
-.toast.warn   { background: #d97706; border-left: 4px solid #92400e; }
 
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to   { opacity: 0; pointer-events: none; }
+@keyframes logFadeIn {
+    from { opacity: 0; transform: translateX(-5px); }
+    to { opacity: 1; transform: translateX(0); }
 }

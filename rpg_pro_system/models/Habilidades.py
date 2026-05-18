@@ -48,3 +48,52 @@ class Habilidades:
             except Exception as e:
                 print(f"❌ Error al obtener habilidades: {e}")
         return habilidades_lista
+
+    @classmethod
+    def obtener_arbol_habilidades(cls, get_db_connection, clase_id, personaje_id):
+        """
+        Trae TODAS las habilidades de una clase específica (catálogo)
+        y les pega el nivel actual de un personaje concreto si las tiene aprendidas.
+        """
+        habilidades_lista = []
+        with get_db_connection() as conexion:
+            if conexion is None: return []
+            try:
+                with conexion.cursor() as cursor:
+                    # LEFT JOIN: Trae todas las habilidades de la clase,
+                    # y si el personaje la tiene en Personajes_Habilidades, saca su nivel.
+                    # COALESCE convierte el NULL (si no la tiene) en un 0.
+                    query = """
+                            SELECT h.id, \
+                                   h.nombre, \
+                                   h.descripcion, \
+                                   h.tipo, \
+                                   h.nivel_maximo, \
+                                   h.costo_mana, \
+                                   h.dano_base, \
+                                   COALESCE(ph.nivel_actual, 0) AS nivel_actual
+                            FROM Habilidades h
+                                     LEFT JOIN Personajes_Habilidades ph
+                                               ON h.id = ph.id_habilidad AND ph.id_personaje = %s
+                            WHERE h.id_clase = %s \
+                            """
+
+                    cursor.execute(query, (personaje_id, clase_id))
+                    filas = cursor.fetchall()
+
+                    for f in filas:
+                        # Lo mandamos directo a la raíz (SIN el sub-objeto stats)
+                        habilidades_lista.append({
+                            "id": f[0],
+                            "nombre": f[1],
+                            "descripcion": f[2],
+                            "tipo": f[3],
+                            "nivel_maximo": f[4],
+                            "costo_mana": f[5],
+                            "dano_base": f[6],
+                            "nivel_actual": f[7]  # Será 0 si no está aprendida, o el nivel real si sí
+                        })
+            except Exception as e:
+                print(f"❌ Error al obtener el árbol de habilidades: {e}")
+
+        return habilidades_lista

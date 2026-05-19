@@ -326,6 +326,61 @@ def api_add_item_inventario(id_personaje, id_item):
         return jsonify(resultado), 400
 
 
+@app.route('/api/inventario/toggle/<int:inv_id>', methods=['POST'])
+def api_toggle_equipar(inv_id):
+    """
+    Alterna el estado equipado/desequipado de un registro de inventario.
+    Busca el registro por su ID único, crea la instancia Inventario
+    y llama a toggle_equipar_desequipar().
+
+    URL:    POST /api/inventario/toggle/7
+    Body:   vacío (no necesita datos extra)
+    Return: { ok, equipado, mensaje }
+    """
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # 1. Recuperamos la fila exacta por su PK
+                cur.execute(
+                    "SELECT id, id_personaje, id_item, cantidad, equipado "
+                    "FROM Inventarios WHERE id = %s",
+                    (inv_id,)
+                )
+                fila = cur.fetchone()
+
+        if not fila:
+            return jsonify({
+                "ok": False,
+                "mensaje": f"Registro de inventario {inv_id} no encontrado."
+            }), 404
+
+        # 2. Construimos la instancia con TU propio constructor
+        inv = Inventario(*fila)  # id, id_personaje, id_item, cantidad, equipado
+
+        # 3. Llamamos al método — él abre su propia conexión internamente
+        exito = inv.toggle_equipar_desequipar()
+
+        if not exito:
+            return jsonify({
+                "ok": False,
+                "mensaje": "No se pudo actualizar el estado en la base de datos."
+            }), 500
+
+        accion = "Equipado" if inv.equipado else "Desequipado"
+        return jsonify({
+            "ok": True,
+            "equipado": inv.equipado,  # True / False — estado nuevo
+            "mensaje": f"✅ {accion} con éxito."
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error en toggle_equipar: {e}")
+        return jsonify({
+            "ok": False,
+            "mensaje": f"Error del servidor: {str(e)}"
+        }), 500
+
+
 # --- TEST DE CONEXIÓN ---
 @socketio.on('connect')
 def test_db_connection():

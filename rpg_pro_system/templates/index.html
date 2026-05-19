@@ -4,8 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RPG Avanzado | Reino de Leyendas</title>
-    <!-- Apuntamos a la carpeta static como pide Flask -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="../static/style.css">
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" defer></script>
+    <script src="../static/app.js" defer></script>
 </head>
 
 <body>
@@ -41,13 +48,12 @@
     </header>
 
     <main class="game-layout">
-        <!-- HERO PANEL -->
         <section class="hero-panel" aria-labelledby="hero-heading">
             <div class="hero-content">
                 <p class="eyebrow">Servidor activo</p>
                 <h2 id="hero-heading">Forja tu destino, mejora tus habilidades y domina el reino</h2>
                 <p class="hero-description">
-                    Elige a tu aventurero, desbloquea poderes uniques, equipa los mejores objetos
+                    Elige a tu aventurero, desbloquea poderes únicos, equipa los mejores objetos
                     de la tienda y enfréntate a enemigos legendarios en combate por turnos.
                 </p>
 
@@ -71,7 +77,6 @@
             </div>
         </section>
 
-        <!-- SELECTOR DE PERSONAJE -->
         <section class="dashboard-grid" aria-labelledby="char-heading">
             <article class="panel">
                 <div class="panel-header">
@@ -114,7 +119,6 @@
             </article>
         </section>
 
-        <!-- TABS PRINCIPALES -->
         <section class="tabs-panel" aria-label="Gestión de Juego">
             <nav class="tabs-nav" role="tablist">
                 <button type="button" class="tab-btn active" data-tab="habilidades" role="tab" aria-selected="true" aria-controls="tab-habilidades">🌳 Habilidades</button>
@@ -124,7 +128,6 @@
                 <button type="button" class="tab-btn" data-tab="inventario" role="tab" aria-selected="false" aria-controls="tab-inventario">🎒 Inventario</button>
             </nav>
 
-            <!-- TAB: ÁRBOL DE HABILIDADES -->
             <article class="tab-content active" id="tab-habilidades" role="tabpanel" aria-labelledby="tab-habilidades">
                 <div class="panel-header">
                     <div>
@@ -142,75 +145,71 @@
                 </div>
             </article>
 
-            <!-- TAB: ESTADÍSTICAS Y DAÑO DETALLADO -->
             <article class="tab-content" id="tab-estadisticas" role="tabpanel" aria-labelledby="tab-estadisticas">
-    <div class="panel-header">
-        <div>
-            <p class="eyebrow">Hoja de Personaje</p>
-            <h2>Atributos y Poder de Combate</h2>
-        </div>
-        <span id="badge-clase-stats" class="panel-badge">Valores Reales</span>
-    </div>
-
-    <div id="stats-detail-container" class="stats-container-layout">
-
-        <div id="stats-empty-state" class="empty-state">
-            <span aria-hidden="true">📊</span>
-            <p>Selecciona un aventurero para calcular su daño, maná y estadísticas de combate.</p>
-        </div>
-
-        <div id="stats-hud-wrapper" class="stats-hud-wrapper hidden">
-            <div class="rpg-hud-bars">
-                <div class="hud-bar-group">
-                    <div class="hud-bar-label">
-                        <span>❤️ SALUD</span>
-                        <strong id="real-hp-text">0 / 0</strong>
+                <div class="panel-header">
+                    <div>
+                        <p class="eyebrow">Hoja de Personaje</p>
+                        <h2>Atributos y Poder de Combate</h2>
                     </div>
-                    <div class="hud-bar-bg hp-bg">
-                        <div id="real-hp-fill" class="hud-bar-fill hp-fill" style="width: 0%"></div>
-                    </div>
+                    <span id="badge-clase-stats" class="panel-badge">Valores Reales</span>
                 </div>
 
-                <div class="hud-bar-group">
-                    <div class="hud-bar-label">
-                        <span id="real-resource-name">✨ MANÁ</span>
-                        <strong id="real-mp-text">0 / 0</strong>
+                <div id="stats-detail-container" class="stats-container-layout">
+                    <div id="stats-empty-state" class="empty-state">
+                        <span aria-hidden="true">📊</span>
+                        <p>Selecciona un aventurero para calcular su daño, maná y estadísticas de combate.</p>
                     </div>
-                    <div class="hud-bar-bg mp-bg">
-                        <div id="real-mp-fill" class="hud-bar-fill mp-fill" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="attributes-premium-grid">
-                <div class="attr-card str">
-                    <span class="attr-icon">⚔️</span>
-                    <div class="attr-info">
-                        <span class="attr-title">Fuerza</span>
-                        <strong id="stat-fuerza" class="attr-value">-</strong>
-                    </div>
-                </div>
-                <div class="attr-card agi">
-                    <span class="attr-icon">🏹</span>
-                    <div class="attr-info">
-                        <span class="attr-title">Agilidad</span>
-                        <strong id="stat-agilidad" class="attr-value">-</strong>
-                    </div>
-                </div>
-                <div class="attr-card int">
-                    <span class="attr-icon">🧠</span>
-                    <div class="attr-info">
-                        <span class="attr-title">Inteligencia</span>
-                        <strong id="stat-inteligencia" class="attr-value">-</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <div id="stats-hud-wrapper" class="stats-hud-wrapper hidden">
+                        <div class="rpg-hud-bars">
+                            <div class="hud-bar-group">
+                                <div class="hud-bar-label">
+                                    <span>❤️ SALUD</span>
+                                    <strong id="real-hp-text">0 / 0</strong>
+                                </div>
+                                <div class="hud-bar-bg hp-bg">
+                                    <div id="real-hp-fill" class="hud-bar-fill hp-fill" style="width: 0%"></div>
+                                </div>
+                            </div>
 
-    </div>
-</article>
+                            <div class="hud-bar-group">
+                                <div class="hud-bar-label">
+                                    <span id="real-resource-name">✨ MANÁ</span>
+                                    <strong id="real-mp-text">0 / 0</strong>
+                                </div>
+                                <div class="hud-bar-bg mp-bg">
+                                    <div id="real-mp-fill" class="hud-bar-fill mp-fill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
 
-            <!-- TAB: TIENDA -->
+                        <div class="attributes-premium-grid">
+                            <div class="attr-card str">
+                                <span class="attr-icon">⚔️</span>
+                                <div class="attr-info">
+                                    <span class="attr-title">Fuerza</span>
+                                    <strong id="stat-fuerza" class="attr-value">-</strong>
+                                </div>
+                            </div>
+                            <div class="attr-card agi">
+                                <span class="attr-icon">🏹</span>
+                                <div class="attr-info">
+                                    <span class="attr-title">Agilidad</span>
+                                    <strong id="stat-agilidad" class="attr-value">-</strong>
+                                </div>
+                            </div>
+                            <div class="attr-card int">
+                                <span class="attr-icon">🧠</span>
+                                <div class="attr-info">
+                                    <span class="attr-title">Inteligencia</span>
+                                    <strong id="stat-inteligencia" class="attr-value">-</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
             <article class="tab-content" id="tab-tienda" role="tabpanel" aria-labelledby="tab-tienda">
                 <div class="panel-header">
                     <div>
@@ -236,7 +235,6 @@
                 </div>
             </article>
 
-            <!-- TAB: COMBATE -->
             <article class="tab-content" id="tab-combate" role="tabpanel" aria-labelledby="tab-combate">
                 <div class="panel-header">
                     <div>
@@ -288,7 +286,6 @@
                 </div>
             </article>
 
-            <!-- TAB: INVENTARIO -->
             <article class="tab-content" id="tab-inventario" role="tabpanel" aria-labelledby="tab-inventario">
                 <div class="panel-header">
                     <div>
@@ -307,7 +304,6 @@
             </article>
         </section>
 
-        <!-- LOG DEL SISTEMA -->
         <section class="bottom-grid" aria-label="Logs globales">
             <details class="panel small-panel panel-desplegable">
                 <summary>
@@ -322,11 +318,5 @@
             </details>
         </section>
     </main>
-
-    <!-- 1. Cliente Socket.IO desde CDN estable -->
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-
-    <!-- 2. Tu script cargado correctamente desde la carpeta static -->
-    <script src="../static/app.js"></script>
 </body>
 </html>

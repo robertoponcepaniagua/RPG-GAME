@@ -62,6 +62,7 @@ const DOM = {
     btnIniciarCombate: document.getElementById('btn-iniciar-combate'),
     btnIrCombate: document.getElementById('btn-ir-combate'),
     btnSubirNivel: document.getElementById('btn-subir-nivel'),
+    btnDescansar: document.getElementById('btn-descansar'),
 
     // KPIs
     kpiHeroes: document.getElementById('kpi-heroes'),
@@ -819,3 +820,93 @@ if(socket) {
         }).join('');
     });
 }
+async function descansar() {
+    if (!STATE.personajeActivo) {
+        mostrarToast("Selecciona un héroe primero.", "warn");
+        return;
+    }
+
+    const oro = STATE.personajeActivo.oro ?? 0;
+
+    // Validación rápida en cliente antes de llamar al servidor
+    if (oro < 50) {
+        mostrarToast(`Necesitas 50 de oro para descansar. Tienes ${oro}. 💸`, "warn");
+        return;
+    }
+
+    // Feedback inmediato: deshabilitamos el botón
+    if (DOM.btnDescansar) {
+        DOM.btnDescansar.disabled = true;
+        DOM.btnDescansar.innerText = "⏳ Descansando...";
+    }
+
+    try {
+        const res = await fetch('/api/personaje/descansar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_personaje: STATE.personajeActivo.id })
+        });
+
+        const resultado = await res.json();
+
+        if (!resultado.ok) {
+            mostrarToast(resultado.mensaje, 'warn');
+            return;
+        }
+
+        const datos = resultado.personaje;
+
+        // ── Sincronizamos STATE ──────────────────────────────────
+        Object.assign(STATE.personajeActivo, {
+            oro:         datos.oro,
+            vida_actual: datos.vida_actual,
+            vida_max:    datos.vida_max,
+            mana_actual: datos.mana_actual,
+            mana_max:    datos.mana_max,
+        });
+
+        // Actualizamos también la referencia en la lista global
+        const refLista = STATE.personajes.find(p => p.id === STATE.personajeActivo.id);
+        if (refLista) refLista.oro = datos.oro;
+
+        // ── Actualizamos el HUD superior ────────────────────────
+        if (DOM.hudGold)    DOM.hudGold.innerText    = datos.oro;
+        if (DOM.hudHp)      DOM.hudHp.innerText      = `${datos.vida_actual}/${datos.vida_max}`;
+
+        // ── Actualizamos el panel de selección ──────────────────
+        if (DOM.selectedGold)   DOM.selectedGold.innerText   = `Oro: ${datos.oro}`;
+        if (DOM.selectedHealth) DOM.selectedHealth.innerText = `Vida: ${datos.vida_actual}/${datos.vida_max}`;
+        if (DOM.badgeOro)       DOM.badgeOro.innerText       = `💰 ${datos.oro} oro`;
+
+        // ── Actualizamos las barras de estadísticas (tab Stats) ──
+        const hpFill = document.getElementById('real-hp-fill');
+        const hpText = document.getElementById('real-hp-text');
+        const mpFill = document.getElementById('real-mp-fill');
+        const mpText = document.getElementById('real-mp-text');
+
+        if (hpFill) hpFill.style.width = `${(datos.vida_actual / datos.vida_max) * 100}%`;
+        if (hpText) hpText.innerText   = `${datos.vida_actual} / ${datos.vida_max}`;
+
+        const pctMana = datos.mana_max > 0
+            ? (datos.mana_actual / datos.mana_max) * 100
+            : 0;
+        if (mpFill) mpFill.style.width = `${pctMana}%`;
+        if (mpText) mpText.innerText   = `${datos.mana_actual} / ${datos.mana_max}`;
+
+        escribirLog(resultado.mensaje);
+        mostrarToast(resultado.mensaje, 'ok');
+
+    } catch (err) {
+        console.error('❌ Error al descansar:', err);
+        mostrarToast('Error de red al descansar.', 'error');
+    } finally {
+        // Siempre restauramos el botón, tanto si hubo éxito como error
+        if (DOM.btnDescansar) {
+            DOM.btnDescansar.disabled = false;
+            DOM.btnDescansar.innerText = "🏕️ Descansar — 50 🪙";
+        }
+    }
+}
+
+if (DOM.btnDescansar) DOM.btnDescansar.addEventListener('click', descansar);
+

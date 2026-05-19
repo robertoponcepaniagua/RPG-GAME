@@ -268,19 +268,14 @@ def api_subir_nivel():
 
 @app.route('/api/personajes/<int:id_personaje>/estadisticas', methods=['GET'])
 def api_estadisticas_personaje(id_personaje):
-    """
-    Endpoint REST que devuelve los cálculos de daño y recursos de un aventurero.
-    """
-    # LLamamos al método del modelo que acabamos de crear
+    # 1. Recuperamos el personaje
+    # 2. Llamamos a tu método de cálculo.
+
     stats = Personaje.obtener_estadisticas_personaje(id_personaje, get_db_connection)
 
     if not stats:
-        return jsonify({
-            "ok": False,
-            "mensaje": "Personaje no encontrado o error en los cálculos."
-        }), 404
+        return jsonify({"ok": False, "mensaje": "Personaje no encontrado"}), 404
 
-    # Devolvemos los datos estructurados en formato JSON con estado HTTP 200 (OK)
     return jsonify(stats), 200
 
 @app.route('/api/personajes/arbol-habilidades')
@@ -324,6 +319,23 @@ def api_add_item_inventario(id_personaje, id_item):
         return jsonify(resultado), 200
     else:
         return jsonify(resultado), 400
+
+
+@app.route('/api/personaje/descansar', methods=['POST'])
+def api_descansar():
+    """
+    POST /api/personaje/descansar
+    Body JSON: { "id_personaje": 3 }
+    Return:    { ok, mensaje, personaje: { oro, vida_actual, vida_max, mana_actual, mana_max } }
+    """
+    data = request.get_json()
+    if not data or 'id_personaje' not in data:
+        return jsonify({"ok": False, "mensaje": "Falta id_personaje en el cuerpo."}), 400
+
+    resultado = Personaje.descansar(get_db_connection, data['id_personaje'])
+
+    status = 200 if resultado["ok"] else 400
+    return jsonify(resultado), status
 
 
 @app.route('/api/inventario/toggle/<int:inv_id>', methods=['POST'])

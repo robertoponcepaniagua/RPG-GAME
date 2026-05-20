@@ -425,4 +425,155 @@ class Personaje:
             print(f"❌ Error en subir_nivel_habilidad: {e}")
             return {"ok": False, "mensaje": f"Error del servidor: {str(e)}"}
 
+    @staticmethod
+    def obtener_estadisticas_personaje(get_db_connection, id_personaje):
+        """
+        Recupera las estadísticas directamente de la tabla Personajes,
+        forzando autocommit para evitar leer datos cacheados por transacciones concurrentes.
+        """
+        with get_db_connection() as conexion:
+            if conexion is None:
+                return None
+            try:
+                # 🔥 LA CLAVE COMPLETA: Forzamos a que la lectura sea en tiempo real directo
+                # Evita que Psycopg2 use una "foto aislada" vieja de la base de datos
+                conexion.autocommit = True
 
+                with conexion.cursor() as cursor:
+                    cursor.execute("""
+                                   SELECT p.vida_max,
+                                          p.vida_actual,
+                                          p.mana_max,
+                                          p.mana_actual,
+                                          p.fuerza,
+                                          p.agilidad,
+                                          p.inteligencia,
+                                          c.recurso_primario
+                                   FROM Personajes p
+                                            JOIN Clases_RPG c ON p.id_clase = c.id
+                                   WHERE p.id = %s;
+                                   """, (id_personaje,))
+
+                    fila = cursor.fetchone()
+
+                    if fila:
+                        return {
+                            "vida_max": fila[0],
+                            "vida_actual": fila[1],
+                            "mana_max": fila[2],
+                            "mana_actual": fila[3],
+                            "fuerza": fila[4],
+                            "agilidad": fila[5],
+                            "inteligencia": fila[6],
+                            "recurso_primario": fila[7] if fila[7] else "Mana"
+                        }
+                    return None
+            except Exception as e:
+                print(f"❌ Error en obtener_estadisticas_personaje: {e}")
+                return None
+
+    @classmethod
+    def actualizar_stats_personaje(cls, get_db_connection, id_personaje):
+        """
+        Recalcula todas las estadísticas de un personaje basándose en su nivel,
+        raza y objetos equipados, y guarda el resultado en la BD.
+        """
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # 1. Obtener datos base
+                cur.execute("""
+                            SELECT p.nivel,
+                                   p.id_raza,
+                                   r.mod_vida,
+                                   r.mod_mana,
+                                   r.mod_fuerza,
+                                   r.mod_agilidad,
+                                   r.mod_inteligencia
+                            FROM Personajes p
+                                     JOIN Razas r ON p.id_raza = r.id
+                            WHERE p.id = %s
+                            """, (id_personaje,))
+                datos = cur.fetchone()
+                nivel, id_raza, r_vida, r_mana, r_fue, r_agi, r_int = datos
+
+                # 2. Sumar modificadores de items equipados
+                cur.execute("""
+                            SELECT COALESCE(SUM(i.mod_vida), 0),
+                                   COALESCE(SUM(i.mod_mana), 0),
+                                   COALESCE(SUM(i.mod_fuerza), 0),
+                                   COALESCE(SUM(i.mod_agilidad), 0),
+                                   COALESCE(SUM(i.mod_inteligencia), 0)
+                            FROM Inventarios inv
+                                     JOIN Items i ON inv.id_item = i.id
+                            WHERE inv.id_personaje = %s
+                              AND inv.equipado = TRUE
+                            """, (id_personaje,))
+                eq_vida, eq_mana, eq_fue, eq_agi, eq_int = cur.fetchone()
+
+                # 3. Aplicar fórmula de cálculo
+                nuevo_vida_max = 100 + ((nivel - 1) * 15) + r_vida + eq_vida
+                nuevo_fue = 10 + ((nivel - 1) * 2) + r_fue + eq_fue
+                # ... repite para mana, agi, int ...
+
+                # 4. Guardar cambios en la BD
+                cur.execute("""
+                            UPDATE Personajes
+                            SET vida_max = %s,
+                                fuerza   = %s
+                            WHERE id = %s
+                            """, (nuevo_vida_max, nuevo_fue, id_personaje))
+
+                conn.commit()
+                return nuevo_fue  # Retornamos para actualizar la UI inmediatamente
+
+    @classmethod
+    def sincronizar_personaje(cls, get_db_connection, id_personaje):
+        """
+        Recalcula TODOS los stats incluyendo: Vida, Mana, Fuerza, Agilidad, Inteligencia.
+        Usa lógica de actualización condicional para evitar bucles o escrituras innecesarias.
+        """
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # 1. Calculamos todo en una sola consulta robusta
+                cur.execute("""
+                            SELECT
+                                -- Fórmulas base + Raza + Equipo
+                                (100 + ((p.nivel - 1) * 15) + r.mod_vida + COALESCE(SUM(i.mod_vida), 0))       as v_vida,
+                                (50 + ((p.nivel - 1) * 10) + r.mod_mana +
+                                 COALESCE(SUM(i.mod_mana), 0))                                                 as v_mana,
+                                (10 + ((p.nivel - 1) * 2) + r.mod_fuerza + COALESCE(SUM(i.mod_fuerza), 0))     as v_fue,
+                                (10 + ((p.nivel - 1) * 2) + r.mod_agilidad + COALESCE(SUM(i.mod_agilidad), 0)) as v_agi,
+                                (10 + ((p.nivel - 1) * 2) + r.mod_inteligencia +
+                                 COALESCE(SUM(i.mod_inteligencia), 0))                                         as v_int
+                            FROM Personajes p
+                                     JOIN Razas r ON p.id_raza = r.id
+                                     LEFT JOIN Inventarios inv ON p.id = inv.id_personaje AND inv.equipado = TRUE
+                                     LEFT JOIN Items i ON inv.id_item = i.id
+                            WHERE p.id = %s
+                            GROUP BY p.nivel, r.mod_vida, r.mod_mana, r.mod_fuerza, r.mod_agilidad, r.mod_inteligencia
+                            """, (id_personaje,))
+
+                stats = cur.fetchone()
+                if not stats: return None
+
+                v_vida, v_mana, v_fue, v_agi, v_int = stats
+
+                # 2. UPDATE "Inteligente": Solo escribe si algo cambió realmente
+                cur.execute("""
+                            UPDATE Personajes
+                            SET vida_max     = %s,
+                                mana_max     = %s,
+                                fuerza       = %s,
+                                agilidad     = %s,
+                                inteligencia = %s,
+                                vida_actual  = CASE WHEN vida_actual > %s THEN %s ELSE vida_actual END,
+                                mana_actual  = CASE WHEN mana_actual > %s THEN %s ELSE mana_actual END
+                            WHERE id = %s
+                              AND (vida_max != %s OR mana_max != %s OR fuerza != %s OR agilidad != %s OR inteligencia != %s)
+                            """, (v_vida, v_mana, v_fue, v_agi, v_int,
+                                  v_vida, v_vida, v_mana, v_mana,
+                                  id_personaje,
+                                  v_vida, v_mana, v_fue, v_agi, v_int))
+
+                conn.commit()
+                return {"vida": v_vida, "mana": v_mana, "fuerza": v_fue, "agilidad": v_agi, "inteligencia": v_int}

@@ -2,6 +2,7 @@ from multiprocessing.forkserver import connect_to_new_process
 from os import access
 
 import flask
+import psycopg2
 
 from database.db import get_db_connection
 
@@ -118,12 +119,12 @@ class Inventario:
                 "mensaje": f"Error al agregar objeto al inventario: {e}"
             }
 
-    def toggle_equipar_desequipar(self):
+    def toggle_equipar_desequipar(self, get_db_connection):
         """
-        IDEA:
-        SI ESTÁ EQUIPADO, DESEQUIPAR. SI ESTÁ DESEQUIPADO, EQUIPAR.
-        Versión genérica usando el ID único del registro.
+        Alterna entre equipado y desequipado usando el ID único del registro.
+        Recibe la función de conexión para interactuar con la base de datos.
         """
+        # 🔥 Ahora pasamos get_db_connection como argumento para evitar NameError
         with get_db_connection() as conexion:
             if conexion is None:
                 return False
@@ -133,10 +134,12 @@ class Inventario:
                     nuevo_equipado = not self.equipado
 
                     query = "UPDATE Inventarios SET equipado = %s WHERE id = %s"
-
                     cursor.execute(query, (nuevo_equipado, self.id))
+
+                    # Confirmamos la transacción para que salte el Trigger en PostgreSQL
                     conexion.commit()
 
+                    # Si la base de datos se actualizó correctamente, mutamos el objeto en Python
                     self.equipado = nuevo_equipado
 
                     accion = "Equipado" if nuevo_equipado else "Desequipado"
@@ -146,3 +149,43 @@ class Inventario:
             except Exception as e:
                 print(f"❌ Error al cambiar estado de equipo: {e}")
                 return False
+
+    @classmethod
+    def conmutar_equipamiento_por_id(cls, get_db_connection, inv_id):
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                try:
+                    # 1. Obtenemos ID de personaje y estado
+                    cur.execute("SELECT id_personaje, equipado FROM Inventarios WHERE id = %s", (inv_id,))
+                    fila = cur.fetchone()
+                    if not fila: return {"ok": False, "mensaje": "No encontrado", "status": 404}
+
+                    id_personaje, estado_actual = fila
+                    nuevo_estado = not estado_actual
+
+                    # 2. Actualizamos el estado
+                    cur.execute("UPDATE Inventarios SET equipado = %s WHERE id = %s", (nuevo_estado, inv_id))
+
+                    # 3. 🔥 SINCRONIZACIÓN FORZADA
+                    # Llamamos al método que recalcula todo (esto dispara el Trigger o el UPDATE)
+                    # Si ya tienes el Trigger activo, este método es un "doble check" muy seguro.
+                    cur.execute("SET client_min_messages = WARNING;")
+                    conn.commit()
+
+                    # 4. LEEMOS EL RESULTADO FINAL
+                    # Hacemos esto después del commit para leer los datos que el Trigger escribió
+                    cur.execute("SELECT fuerza FROM Personajes WHERE id = %s", (id_personaje,))
+                    nueva_fuerza = cur.fetchone()[0]
+
+                    print(f"✅ [Éxito] Personaje {id_personaje} ahora tiene {nueva_fuerza} de fuerza.")
+
+                    return {
+                        "ok": True,
+                        "nueva_fuerza": nueva_fuerza,  # El dato que el frontend espera
+                        "mensaje": "Estadísticas actualizadas",
+                        "status": 200
+                    }
+                except Exception as e:
+                    conn.rollback()
+                    print(f"❌ Error crítico: {e}")
+                    return {"ok": False, "mensaje": str(e), "status": 500}

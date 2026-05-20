@@ -93,9 +93,9 @@ def api_magos():
 
 @app.route("/api/personajes/<int:id_personaje>/estadisticas")
 def api_estadisticas_personaje(id_personaje):
-    stats = Personaje.obtener_estadisticas_personaje(id_personaje, get_db_connection)
+    stats = Personaje.obtener_estadisticas_personaje(get_db_connection, id_personaje)
     if not stats:
-        return jsonify({"ok": False, "mensaje": "Personaje no encontrado"}), 404
+        return jsonify({"ok": False, "mensaje": "Personaje no encontrado o error en BD"}), 404
     return jsonify(stats), 200
 
 
@@ -250,40 +250,42 @@ def api_add_item_inventario(id_personaje, id_item):
 
 @app.route("/api/inventario/toggle/<int:inv_id>", methods=["POST"])
 def api_toggle_equipar(inv_id):
-    """Alterna el estado equipado / desequipado de un registro de inventario."""
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, id_personaje, id_item, cantidad, equipado "
-                    "FROM Inventarios WHERE id = %s",
+                    "SELECT id, id_personaje, id_item, cantidad, equipado FROM Inventarios WHERE id = %s",
                     (inv_id,),
                 )
                 fila = cur.fetchone()
 
         if not fila:
-            return jsonify({
-                "ok": False,
-                "mensaje": f"Registro de inventario {inv_id} no encontrado.",
-            }), 404
+            return jsonify({"ok": False, "mensaje": "No encontrado"}), 404
 
+        # Instanciamos y ejecutamos el cambio
         inv = Inventario(*fila)
-        if not inv.toggle_equipar_desequipar():
-            return jsonify({
-                "ok": False,
-                "mensaje": "No se pudo actualizar el estado en la base de datos.",
-            }), 500
+
+        # 1. Cambiamos el estado (pasando la función get_db_connection)
+        if not inv.toggle_equipar_desequipar(get_db_connection):
+            return jsonify({"ok": False, "mensaje": "Error al actualizar BD"}), 500
+
+        # 2. 🔥 SINCRONIZACIÓN TOTAL: Llamamos al método que recalcula todo
+        # Nota: Asegúrate de importar tu clase Personaje
+        nuevos_stats = Personaje.sincronizar_personaje(get_db_connection, inv.id_personaje)
 
         accion = "Equipado" if inv.equipado else "Desequipado"
+
         return jsonify({
             "ok": True,
             "equipado": inv.equipado,
+            "id_personaje": inv.id_personaje,
+            "stats": nuevos_stats,  # Enviamos los stats calculados al frontend
             "mensaje": f"✅ {accion} con éxito.",
         }), 200
 
     except Exception as e:
-        print(f"❌ Error en toggle_equipar: {e}")
-        return jsonify({"ok": False, "mensaje": f"Error del servidor: {str(e)}"}), 500
+        print(f"❌ Error en api_toggle_equipar: {e}")
+        return jsonify({"ok": False, "mensaje": str(e)}), 500
 
 
 @app.route("/api/items/")

@@ -1,5 +1,6 @@
 class Item:
-    def __init__(self, id, nombre, descripcion, precio, tipo, mod_vida, mod_mana, mod_fuerza, mod_agilidad, mod_inteligencia, dano_bonus, rareza):
+    def __init__(self, id, nombre, descripcion, precio, tipo, mod_vida, mod_mana,
+                 mod_fuerza, mod_agilidad, mod_inteligencia, dano_bonus, rareza):
         self.id = id
         self.nombre = nombre
         self.descripcion = descripcion
@@ -18,11 +19,17 @@ class Item:
         items_data = []
 
         with get_db_connection() as conexion:
-            if conexion is None: return []
+            if conexion is None:
+                return []
 
             try:
                 with conexion.cursor() as cursor:
-                    query = "SELECT * FROM Items"
+                    query = """
+                        SELECT id, nombre, descripcion, precio, tipo, 
+                               mod_vida, mod_mana, mod_fuerza, mod_agilidad, mod_inteligencia, 
+                               dano_bonus, rareza 
+                        FROM   Items
+                    """
                     filtros = []
                     valores = []
 
@@ -40,15 +47,15 @@ class Item:
                     filas = cursor.fetchall()
 
                     for fila in filas:
-                        # 1. Desempaquetado
+                        # Desempaquetado seguro y ordenado según el SELECT de arriba
                         (id_item, nombre, desc, precio, tipo_item, mod_v,
                          mod_m, mod_f, mod_a, mod_i, dano, rareza_item) = fila
 
-                        # 2. Instanciamos el objeto
-                        it = Item(id_item, nombre, desc, precio, tipo_item, mod_v,
-                                  mod_m, mod_f, mod_a, mod_i, dano, rareza_item)
+                        # Instanciamos el objeto
+                        it = cls(id_item, nombre, desc, precio, tipo_item, mod_v,
+                                 mod_m, mod_f, mod_a, mod_i, dano, rareza_item)
 
-                        # 3. Construimos el diccionario usando los atributos del objeto 'it'
+                        # Construimos el diccionario de salida
                         items_data.append({
                             "id": it.id,
                             "nombre": it.nombre,

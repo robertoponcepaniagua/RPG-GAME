@@ -471,3 +471,106 @@ class Personaje:
             except Exception as e:
                 conexion.rollback()
                 return {"ok": False, "mensaje": f"Error al descansar: {str(e)}"}
+
+
+    # FALTA AÑADIR EL REQUISITO DE EXPERIENCIA PARA SUBIR DE NIVEL LA HABILIDAD, PARA GANAR EXP EN LA HABILIDAD HE PENSADO QUE AL USARLA GANE 10 DE EXP POR CADA USO
+    @classmethod
+    def subir_nivel_habilidad(cls, get_db_connection, id_personaje, id_habilidad):
+        """
+        Sube el nivel de una habilidad del personaje.
+        Si no la tiene, la desbloquea (Nivel 1) si cumple los requisitos.
+        """
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+
+                    # ── 1. Buscamos primero si la habilidad existe en el juego ──
+                    cur.execute("""
+                                SELECT nombre, nivel_maximo
+                                FROM Habilidades
+                                WHERE id = %s
+                                """, (id_habilidad,))
+
+                    fila_habilidad = cur.fetchone()
+                    if not fila_habilidad:
+                        return {
+                            "ok": False,
+                            "mensaje": f"La habilidad con ID {id_habilidad} no existe en el juego."
+                        }
+
+                    nombre_habilidad, nivel_maximo = fila_habilidad
+
+                    # ── 2. Estado actual del personaje (Bloqueo para evitar exploits) ──
+                    cur.execute("""
+                                SELECT nivel_actual
+                                FROM Personajes_Habilidades
+                                WHERE id_personaje = %s
+                                  AND id_habilidad = %s
+                                    FOR UPDATE
+                                """, (id_personaje, id_habilidad))
+
+                    fila_personaje = cur.fetchone()
+
+                    # Si existe, leemos su nivel. Si no, asumimos que está en nivel 0 (no desbloqueada)
+                    existe_registro = fila_personaje is not None
+                    nivel_actual = fila_personaje[0] if existe_registro else 0
+
+                    # ── 3. ¿Ya está al máximo? ───────────────────────────────────
+                    if nivel_actual >= nivel_maximo:
+                        return {
+                            "ok": False,
+                            "mensaje": f"'{nombre_habilidad}' ya está en su nivel máximo ({nivel_maximo})."
+                        }
+
+                    # ── 4. Comprobación de requisitos previos ────────────────────
+                    cur.execute("""
+                                SELECT hr.id_requisito, hr.nivel_requisito_necesario, COALESCE(ph.nivel_actual, 0)
+                                FROM Habilidades_Requisitos hr
+                                         LEFT JOIN Personajes_Habilidades ph
+                                                   ON ph.id_habilidad = hr.id_requisito AND ph.id_personaje = %s
+                                WHERE hr.id_habilidad = %s
+                                  AND COALESCE(ph.nivel_actual, 0) < hr.nivel_requisito_necesario
+                                """, (id_personaje, id_habilidad))
+
+                    requisitos_no_cumplidos = cur.fetchall()
+
+                    if requisitos_no_cumplidos:
+                        id_req, nivel_requerido, nivel_actual_req = requisitos_no_cumplidos[0]
+                        return {
+                            "ok": False,
+                            "mensaje": (
+                                f"Requisito no cumplido: "
+                                f"habilidad {id_req} necesita nivel {nivel_requerido} "
+                                f"(tienes nivel {nivel_actual_req})."
+                            )
+                        }
+
+                    # ── 5. Guardar cambios (INSERT si es nueva, UPDATE si ya existía) ──
+                    if not existe_registro:
+                        # Desbloqueo inicial (Pasa de no existir a Nivel 1)
+                        cur.execute("""
+                                    INSERT INTO Personajes_Habilidades (id_personaje, id_habilidad, nivel_actual)
+                                    VALUES (%s, %s, 1)
+                                    """, (id_personaje, id_habilidad))
+                    else:
+                        # Subida de nivel normal
+                        cur.execute("""
+                                    UPDATE Personajes_Habilidades
+                                    SET nivel_actual = nivel_actual + 1
+                                    WHERE id_personaje = %s
+                                      AND id_habilidad = %s
+                                    """, (id_personaje, id_habilidad))
+
+                    conn.commit()
+
+                    return {
+                        "ok": True,
+                        "mensaje": f"✅ '{nombre_habilidad}' subida al nivel {nivel_actual + 1}.",
+                        "nivel_nuevo": nivel_actual + 1
+                    }
+
+        except Exception as e:
+            print(f"❌ Error en subir_nivel_habilidad: {e}")
+            return {"ok": False, "mensaje": f"Error del servidor: {str(e)}"}
+
+

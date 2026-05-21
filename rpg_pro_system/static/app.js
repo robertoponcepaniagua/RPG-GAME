@@ -594,6 +594,13 @@ async function toggleEquipar(invId, estabaEquipado) {
         escribirLog(resultado.mensaje);
         mostrarToast(resultado.mensaje, 'ok');
 
+        // 🔥 AÑADE ESTO AQUÍ: Sincronización automática de estadísticas
+        // Comprobamos que exista el estado global y llamamos a tu función
+        if (typeof STATE !== 'undefined' && STATE.personajeActivo && STATE.personajeActivo.id) {
+            await cargarPanelEstadisticas(STATE.personajeActivo.id);
+            console.log("🔄 Estadísticas actualizadas en segundo plano.");
+        }
+
     } catch (err) {
         console.error('❌ Error en toggleEquipar:', err);
         mostrarToast('Error de red al cambiar estado.', 'error');
@@ -909,4 +916,14 @@ async function descansar() {
 }
 
 if (DOM.btnDescansar) DOM.btnDescansar.addEventListener('click', descansar);
+
+
+function actualizarUI(stats) {
+    document.querySelectorAll('.stat-value').forEach(el => {
+        // el.dataset.stat busca lo que pusiste en data-stat="vida", etc.
+        if (stats[el.dataset.stat] !== undefined) {
+            el.innerText = stats[el.dataset.stat];
+        }
+    });
+}
 

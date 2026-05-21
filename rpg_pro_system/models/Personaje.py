@@ -60,21 +60,23 @@ class Personaje:
                 print(f"❌ Error en obtener_personajes: {e}")
 
         return personajes_data
-            
+
     @classmethod
     def comprar_obj(cls, id_personaje, id_item):
         """
         Lógica de compra completa: resta oro y añade al inventario.
         """
+        # 1. Usamos 'with' porque get_db_connection es un context manager
         with get_db_connection() as conexion:
             if conexion is None:
-                return {"ok": False, "mensaje": "Error de conexión"}
+                return {"ok": False, "mensaje": "Error de conexión con la base de datos"}
 
             try:
                 with conexion.cursor() as cursor:
-                    # 1. Validar oro y precio
-                    cursor.execute("SELECT oro FROM Personajes WHERE id = %s", (id_personaje,))
+                    # 2. Validar oro y precio (¡FOR UPDATE para bloquear la fila!)
+                    cursor.execute("SELECT oro FROM Personajes WHERE id = %s FOR UPDATE", (id_personaje,))
                     res_oro = cursor.fetchone()
+
                     cursor.execute("SELECT precio, nombre FROM Items WHERE id = %s", (id_item,))
                     res_item = cursor.fetchone()
 
@@ -88,7 +90,7 @@ class Personaje:
                     if oro_actual < precio_item:
                         return {"ok": False, "mensaje": f"Oro insuficiente. Tienes {oro_actual} y cuesta {precio_item}"}
 
-                    # 2. PROCESO DE COMPRA (Transacción)
+                    # 3. PROCESO DE COMPRA (Transacción)
                     # Restar oro
                     cursor.execute("UPDATE Personajes SET oro = oro - %s WHERE id = %s", (precio_item, id_personaje))
 
@@ -106,12 +108,23 @@ class Personaje:
                                        VALUES (%s, %s, 1, False)
                                        """, (id_personaje, id_item))
 
-                    conexion.commit()
-                    return {"ok": True, "mensaje": f"¡Has comprado {nombre_item}!"}
+                # 4. Guardar los cambios permanentemente
+                conexion.commit()
+
+                # 5. RETORNAR RESPUESTA
+                return {
+                    "ok": True,
+                    "mensaje": f"¡Has comprado {nombre_item}!",
+                    "oro_restante": oro_actual - precio_item
+                }
 
             except Exception as e:
+                # Si algo falla (ej. error de sintaxis SQL), revertimos la compra
                 conexion.rollback()
-                return {"ok": False, "mensaje": f"Error en la transacción: {e}"}
+                return {"ok": False, "mensaje": f"Error en la transacción: {str(e)}"}
+
+            # Ya NO necesitamos el bloque `finally` con `conexion.close()`.
+            # Al salir del bloque `with get_db_connection()`, Python la cierra automáticamente.
 
     @classmethod
     def ganar_exp_y_oro(cls, id_personaje, id_enemigo, get_db_connection):

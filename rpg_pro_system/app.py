@@ -329,8 +329,23 @@ def api_logros_personaje(personaje_id):
 def api_razas():
     datos = Raza.obtener_razas(get_db_connection)
     return jsonify(datos)
+# =============================================================================
+# API — TIENDA
+# =============================================================================
 
 
+# Cambiamos a POST y rellenamos la variable <int:item_id>
+@app.route("/api/tienda/comprar-items/<int:personaje_id>/<int:item_id>", methods=["POST"])
+def api_comprar_objeto(personaje_id, item_id):
+    # Llamamos al método de clase que corregimos antes
+    resultado = Personaje.comprar_obj(personaje_id, item_id)
+
+    # Si la compra fue exitosa, devolvemos estatus 200 (OK)
+    if resultado["ok"]:
+        return jsonify(resultado), 200
+
+    # Si falló (ej: no hay oro), devolvemos 400 (Bad Request) o 404 según el caso
+    return jsonify(resultado), 400
 # =============================================================================
 # WEBSOCKETS
 # =============================================================================

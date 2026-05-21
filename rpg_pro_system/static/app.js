@@ -446,11 +446,13 @@ async function comprarItem(itemId) {
     }
 
     try {
-        const res = await fetch('/api/tienda/comprar', {
+        // 🛠️ CORRECCIÓN: Ajustamos la URL para que coincida con la ruta de Flask
+        // Pasamos los IDs en la ruta y eliminamos el 'body' porque ya no es necesario
+        const res = await fetch(`/api/tienda/comprar-items/${STATE.personajeActivo.id}/${itemId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_personaje: STATE.personajeActivo.id, id_item: itemId })
+            headers: { 'Content-Type': 'application/json' }
         });
+
         const resultado = await res.json();
 
         if (!resultado.ok) {
@@ -458,6 +460,7 @@ async function comprarItem(itemId) {
             return;
         }
 
+        // El resto de tu lógica de actualización de UI está PERFECTA:
         STATE.personajeActivo.oro = resultado.oro_restante;
         const refLista = STATE.personajes.find(p => p.id === STATE.personajeActivo.id);
         if (refLista) refLista.oro = STATE.personajeActivo.oro;
@@ -467,10 +470,14 @@ async function comprarItem(itemId) {
         if (DOM.badgeOro) DOM.badgeOro.innerText = `💰 ${STATE.personajeActivo.oro} oro`;
 
         mostrarToast(`Comprado: ${item.nombre}`, 'ok');
+
+        // Refrescos automáticos del juego
         cargarInventario(STATE.personajeActivo.id);
         pedirPersonajes();
+
     } catch (err) {
-        console.error(err);
+        console.error("Error en la petición de compra:", err);
+        mostrarToast("Error de red al intentar comprar", "error");
     }
 }
 

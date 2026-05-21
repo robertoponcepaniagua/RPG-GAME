@@ -230,7 +230,6 @@ class Personaje:
                 conexion.rollback()
                 return {"ok": False, "mensaje": f"Error al subir de nivel: {str(e)}"}
 
-
     COSTE_DESCANSO = 50  # una sola constante para cambiarla fácilmente
 
     @classmethod
@@ -238,13 +237,6 @@ class Personaje:
         """
         Descansa en la posada: cuesta COSTE_DESCANSO de oro y restaura
         vida y maná al máximo (incluyendo bonus de equipo activo).
-
-        Flujo:
-        1. Comprueba que el personaje exista y tenga oro suficiente.
-        2. Descuenta el oro en la misma transacción.
-        3. Construye la instancia y llama a actualizar_estadisticas(curar_al_maximo=True),
-           que ya persiste la curación completa en PostgreSQL.
-        4. Devuelve los nuevos valores para que el JS actualice el HUD.
         """
         with get_db_connection() as conexion:
             if conexion is None:
@@ -252,7 +244,7 @@ class Personaje:
 
             try:
                 with conexion.cursor() as cursor:
-                    # 1. Leemos el estado actual
+                    # 1. Leemos el estado actual del personaje
                     cursor.execute("""
                                    SELECT nombre,
                                           nivel,
@@ -288,40 +280,45 @@ class Personaje:
                             "mensaje": f"Necesitas {cls.COSTE_DESCANSO} de oro para descansar. Tienes {oro}."
                         }
 
-                    # 3. Descontamos el oro
-                    cursor.execute(
-                        "UPDATE Personajes SET oro = oro - %s WHERE id = %s",
-                        (cls.COSTE_DESCANSO, id_personaje)
-                    )
-                    conexion.commit()
+                    # 3.
+                    # Hacemos todo en una sola transacción y al final guardamos todo junto.
+                    nuevo_oro = oro - cls.COSTE_DESCANSO
 
-                    # 4. Creamos la instancia
-                    # IMPORTANTE: Pasamos vida_max como vida_actual (y mana_max como mana_actual)
-                    # para que el objeto empiece en estado "curado" en memoria.
+                    # 4. 🔥 CORRECCIÓN 2: Actualizamos Oro, Vida y Maná de un solo golpe en la BD
+                    cursor.execute("""
+                                   UPDATE Personajes
+                                   SET oro         = %s,
+                                       vida_actual = vida_max,
+                                       mana_actual = mana_max
+                                   WHERE id = %s
+                                   """, (nuevo_oro, id_personaje))
+
+                    # 5. Creamos la instancia en memoria con los datos idénticos a la BD
                     personaje = cls(
-                        id_personaje, nombre, nivel, exp, oro - cls.COSTE_DESCANSO,
-                        vida_max, vida_max,  # <--- CORRECCIÓN AQUÍ
-                        mana_max, mana_max,  # <--- CORRECCIÓN AQUÍ
+                        id_personaje, nombre, nivel, exp, nuevo_oro,
+                        vida_max, vida_max,  # Curado al máximo
+                        mana_max, mana_max,  # Curado al máximo
                         fuerza, agilidad, inteligencia, id_raza, id_clase
                     )
 
-                    # Esto persiste el cambio en la base de datos (PostgreSQL)
-                    personaje.actualizar_estadisticas(curar_al_maximo=True)
+                    # 6. Confirmamos TODA la transacción junta (Pagar + Curar)
+                    conexion.commit()
 
                     return {
                         "ok": True,
                         "mensaje": f"🏕️ {nombre} descansó y recuperó todas sus fuerzas. (-{cls.COSTE_DESCANSO} oro)",
                         "personaje": {
                             "oro": personaje.oro,
-                            "vida_actual": personaje.vida_actual,  # Ahora será igual a vida_max
+                            "vida_actual": personaje.vida_actual,
                             "vida_max": personaje.vida_max,
-                            "mana_actual": personaje.mana_actual,  # Ahora será igual a mana_max
+                            "mana_actual": personaje.mana_actual,
                             "mana_max": personaje.mana_max,
                         }
                     }
 
             except Exception as e:
                 conexion.rollback()
+                print(f"❌ Error crítico en descansar: {e}")
                 return {"ok": False, "mensaje": f"Error al descansar: {str(e)}"}
 
 
@@ -471,60 +468,6 @@ class Personaje:
             except Exception as e:
                 print(f"❌ Error en obtener_estadisticas_personaje: {e}")
                 return None
-
-    @classmethod
-    def actualizar_stats_personaje(cls, get_db_connection, id_personaje):
-        """
-        Recalcula todas las estadísticas de un personaje basándose en su nivel,
-        raza y objetos equipados, y guarda el resultado en la BD.
-        """
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                # 1. Obtener datos base
-                cur.execute("""
-                            SELECT p.nivel,
-                                   p.id_raza,
-                                   r.mod_vida,
-                                   r.mod_mana,
-                                   r.mod_fuerza,
-                                   r.mod_agilidad,
-                                   r.mod_inteligencia
-                            FROM Personajes p
-                                     JOIN Razas r ON p.id_raza = r.id
-                            WHERE p.id = %s
-                            """, (id_personaje,))
-                datos = cur.fetchone()
-                nivel, id_raza, r_vida, r_mana, r_fue, r_agi, r_int = datos
-
-                # 2. Sumar modificadores de items equipados
-                cur.execute("""
-                            SELECT COALESCE(SUM(i.mod_vida), 0),
-                                   COALESCE(SUM(i.mod_mana), 0),
-                                   COALESCE(SUM(i.mod_fuerza), 0),
-                                   COALESCE(SUM(i.mod_agilidad), 0),
-                                   COALESCE(SUM(i.mod_inteligencia), 0)
-                            FROM Inventarios inv
-                                     JOIN Items i ON inv.id_item = i.id
-                            WHERE inv.id_personaje = %s
-                              AND inv.equipado = TRUE
-                            """, (id_personaje,))
-                eq_vida, eq_mana, eq_fue, eq_agi, eq_int = cur.fetchone()
-
-                # 3. Aplicar fórmula de cálculo
-                nuevo_vida_max = 100 + ((nivel - 1) * 15) + r_vida + eq_vida
-                nuevo_fue = 10 + ((nivel - 1) * 2) + r_fue + eq_fue
-                # ... repite para mana, agi, int ...
-
-                # 4. Guardar cambios en la BD
-                cur.execute("""
-                            UPDATE Personajes
-                            SET vida_max = %s,
-                                fuerza   = %s
-                            WHERE id = %s
-                            """, (nuevo_vida_max, nuevo_fue, id_personaje))
-
-                conn.commit()
-                return nuevo_fue  # Retornamos para actualizar la UI inmediatamente
 
     @classmethod
     def sincronizar_personaje(cls, get_db_connection, id_personaje):
